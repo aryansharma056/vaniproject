@@ -1,0 +1,118 @@
+/**
+ * SVIP Level Color Themes
+ * Each level has its own distinct color palette
+ * Used across tabs, cards, glows, borders, and backgrounds
+ */
+
+export const SVIP_THEMES = {
+  1: {
+    level: 1,
+    label: "SVIP1",
+    primary: "#D4AF37",        // Gold
+    secondary: "#F5D67B",
+    accent: "#FFE97A",
+    glow: "rgba(212,175,55,0.6)",
+    glowSoft: "rgba(212,175,55,0.15)",
+    bg: "rgba(212,175,55,0.08)",
+    bgCard: "rgba(212,175,55,0.12)",
+    border: "rgba(212,175,55,0.4)",
+    tabActive: "#D4AF37",
+    diamondBorder: "#D4AF37",
+    textPrimary: "#D4AF37",
+    gradient: "linear-gradient(135deg, #D4AF37 0%, #F5D67B 50%, #D4AF37 100%)",
+    privilegesBg: "linear-gradient(180deg, #1a1200 0%, #0d0900 100%)",
+    emoji: "💛",
+  },
+  2: {
+    level: 2,
+    label: "SVIP2",
+    primary: "#E8923A",        // Amber/Orange
+    secondary: "#F5B97A",
+    accent: "#FFD4A0",
+    glow: "rgba(232,146,58,0.6)",
+    glowSoft: "rgba(232,146,58,0.15)",
+    bg: "rgba(232,146,58,0.08)",
+    bgCard: "rgba(232,146,58,0.12)",
+    border: "rgba(232,146,58,0.4)",
+    tabActive: "#E8923A",
+    diamondBorder: "#E8923A",
+    textPrimary: "#E8923A",
+    gradient: "linear-gradient(135deg, #E8923A 0%, #F5B97A 50%, #E8923A 100%)",
+    privilegesBg: "linear-gradient(180deg, #1a0c00 0%, #0d0600 100%)",
+    emoji: "🧡",
+  },
+  3: {
+    level: 3,
+    label: "SVIP3",
+    primary: "#10B981",        // Emerald Green
+    secondary: "#34D399",
+    accent: "#6EE7B7",
+    glow: "rgba(16,185,129,0.6)",
+    glowSoft: "rgba(16,185,129,0.15)",
+    bg: "rgba(16,185,129,0.08)",
+    bgCard: "rgba(16,185,129,0.12)",
+    border: "rgba(16,185,129,0.4)",
+    tabActive: "#10B981",
+    diamondBorder: "#10B981",
+    textPrimary: "#10B981",
+    gradient: "linear-gradient(135deg, #10B981 0%, #34D399 50%, #10B981 100%)",
+    privilegesBg: "linear-gradient(180deg, #00150e 0%, #000d08 100%)",
+    emoji: "💚",
+  },
+  4: {
+    level: 4,
+    label: "SVIP4",
+    primary: "#3B82F6",        // Blue
+    secondary: "#60A5FA",
+    accent: "#93C5FD",
+    glow: "rgba(59,130,246,0.6)",
+    glowSoft: "rgba(59,130,246,0.15)",
+    bg: "rgba(59,130,246,0.08)",
+    bgCard: "rgba(59,130,246,0.12)",
+    border: "rgba(59,130,246,0.4)",
+    tabActive: "#3B82F6",
+    diamondBorder: "#3B82F6",
+    textPrimary: "#3B82F6",
+    gradient: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 50%, #3B82F6 100%)",
+    privilegesBg: "linear-gradient(180deg, #00081a 0%, #00050f 100%)",
+    emoji: "💙",
+  },
+  5: {
+    level: 5,
+    label: "SVIP5",
+    primary: "#A855F7",        // Purple
+    secondary: "#C084FC",
+    accent: "#D8B4FE",
+    glow: "rgba(168,85,247,0.6)",
+    glowSoft: "rgba(168,85,247,0.15)",
+    bg: "rgba(168,85,247,0.08)",
+    bgCard: "rgba(168,85,247,0.12)",
+    border: "rgba(168,85,247,0.4)",
+    tabActive: "#A855F7",
+    diamondBorder: "#A855F7",
+    textPrimary: "#A855F7",
+    gradient: "linear-gradient(135deg, #A855F7 0%, #C084FC 50%, #A855F7 100%)",
+    privilegesBg: "linear-gradient(180deg, #0f0015 0%, #07000d 100%)",
+    emoji: "💜",
+  },
+  6: {
+    level: 6,
+    label: "SVIP6",
+    primary: "#EF4444",        // Red/Crimson
+    secondary: "#F87171",
+    accent: "#FCA5A5",
+    glow: "rgba(239,68,68,0.6)",
+    glowSoft: "rgba(239,68,68,0.15)",
+    bg: "rgba(239,68,68,0.08)",
+    bgCard: "rgba(239,68,68,0.12)",
+    border: "rgba(239,68,68,0.4)",
+    tabActive: "#EF4444",
+    diamondBorder: "#EF4444",
+    textPrimary: "#EF4444",
+    gradient: "linear-gradient(135deg, #EF4444 0%, #F87171 50%, #EF4444 100%)",
+    privilegesBg: "linear-gradient(180deg, #1a0000 0%, #0d0000 100%)",
+    emoji: "❤️",
+  },
+};
+
+export const getTheme = (level) => SVIP_THEMES[level] ?? SVIP_THEMES[1];
