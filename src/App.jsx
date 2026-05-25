@@ -27,7 +27,7 @@ function App() {
     <Route path="/seller" element={<Seller />} />
     <Route path="/host" element={<HostCenter />} />
    <Route path="/merchant" element={<MerchantPage />} />
-    <Route path="/room" element={<Room />} />
+    <Route path="/room/:id" element={<Room />} />
     <Route path="/team" element={<TeamMembers />} />
     <Route path="/agent" element={<AgentMembers />} />
     <Route path ="/members" element={<Members />} />

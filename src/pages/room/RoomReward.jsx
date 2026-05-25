@@ -1,50 +1,26 @@
-/**
- * RoomRewardPage — fixed: ar11.png now renders at full natural height
- * via an <img> element instead of a CSS background with aspect-ratio.
- */
-
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import api from "../../services/api";
 import HEADER_BG from "../../assets/ar11.webp";   // Image 1 — full banner + frame
-import FRAME_BG  from "../../assets/ar111.webp";  // Image 2 — optional secondary frame
+import FRAME_BG from "../../assets/ar111.webp";  // Image 2 — optional secondary frame
 
-const REWARD_ROWS = [
-  { contribution: "150K",  reward: "22.5K"  },
-  { contribution: "300K",  reward: "45K"    },
-  { contribution: "500K",  reward: "75K"    },
-  { contribution: "700K",  reward: "105K"   },
-  { contribution: "1M",    reward: "150K"   },
-  { contribution: "1.5M",  reward: "225K"   },
-  { contribution: "2M",    reward: "300K"   },
-  { contribution: "2.5M",  reward: "375K"   },
-  { contribution: "3M",    reward: "450K"   },
-  { contribution: "3.5M",  reward: "525K"   },
-  { contribution: "4M",    reward: "600K"   },
-  { contribution: "4.5M",  reward: "675K"   },
-  { contribution: "5M",    reward: "750K"   },
-  { contribution: "6M",    reward: "900K"   },
-  { contribution: "8M",    reward: "1.2M"   },
-  { contribution: "10M",   reward: "1.5M"   },
-  { contribution: "12M",   reward: "1.8M"   },
-  { contribution: "15M",   reward: "2.25M"  },
-  { contribution: "18M",   reward: "2.7M"   },
-  { contribution: "20M",   reward: "3M"     },
-  { contribution: "30M",   reward: "4.5M"   },
-  { contribution: "50M",   reward: "7.5M"   },
-];
+// Hardcoded fallback if needed, but we'll use API data
+const DEFAULT_REWARD_ROWS = [];
 
 const CoinIcon = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="11" fill="url(#cg)" stroke="#c8860a" strokeWidth="1.5"/>
-    <circle cx="12" cy="12" r="8"  fill="url(#cg2)" opacity="0.6"/>
+    <circle cx="12" cy="12" r="11" fill="url(#cg)" stroke="#c8860a" strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="8" fill="url(#cg2)" opacity="0.6" />
     <text x="12" y="16.5" textAnchor="middle" fontSize="10"
-          fontWeight="900" fill="#7a3f00" fontFamily="serif">$</text>
+      fontWeight="900" fill="#7a3f00" fontFamily="serif">$</text>
     <defs>
-      <radialGradient id="cg"  cx="35%" cy="30%">
-        <stop offset="0%"   stopColor="#ffe066"/>
-        <stop offset="100%" stopColor="#c8860a"/>
+      <radialGradient id="cg" cx="35%" cy="30%">
+        <stop offset="0%" stopColor="#ffe066" />
+        <stop offset="100%" stopColor="#c8860a" />
       </radialGradient>
       <radialGradient id="cg2" cx="35%" cy="30%">
-        <stop offset="0%"   stopColor="#fff5b0" stopOpacity="0.8"/>
-        <stop offset="100%" stopColor="#c8860a" stopOpacity="0"/>
+        <stop offset="0%" stopColor="#fff5b0" stopOpacity="0.8" />
+        <stop offset="100%" stopColor="#c8860a" stopOpacity="0" />
       </radialGradient>
     </defs>
   </svg>
@@ -275,10 +251,143 @@ const css = `
     color: #fff;
     box-shadow: 0 2px 10px rgba(200,0,0,0.4);
   }
+
+  /* ── CLAIM SECTION ─────────────────────────────────────────── */
+  .rr-claim-section {
+    position: relative;
+    z-index: 5;
+    margin: -10px 20px 10px;
+    background: rgba(40, 10, 10, 0.8);
+    border: 1px solid rgba(255, 210, 80, 0.3);
+    border-radius: 12px;
+    padding: 12px;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .rr-claim-title {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    color: #ffd9a0;
+    text-align: center;
+    font-weight: 700;
+  }
+  .rr-claim-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 180, 60, 0.2);
+  }
+  .rr-claim-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffc840;
+    font-weight: 800;
+  }
+  .rr-claim-btn {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(230, 126, 34, 0.5);
+    transition: transform 0.2s;
+  }
+  .rr-claim-btn:active {
+    transform: scale(0.95);
+  }
+  .rr-claim-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 export default function RoomRewardPage() {
+  const { id } = useParams();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isClaiming, setIsClaiming] = useState(false);
+
   const milestoneIndexes = new Set([4, 7, 10, 14, 16, 19, 21]);
+
+  const fetchRewardData = async () => {
+    try {
+      setLoading(true);
+      console.log(`RoomReward: Fetching data for id ${id}...`);
+      const res = await api.get(`/room-reward/${id}`);
+      console.log("RoomReward: API Response:", res);
+      if (res.status) {
+        setData(res.data);
+      } else {
+        console.error("RoomReward: API Error message:", res.message);
+        setError(res.message || "Failed to fetch data");
+      }
+    } catch (err) {
+      console.error("RoomReward: Fetch error:", err);
+      setError("Something went wrong while fetching reward data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClaim = async (claimId) => {
+    if (isClaiming) return;
+    try {
+      setIsClaiming(true);
+      const formData = new FormData();
+      formData.append('claim_id', claimId);
+      
+      const res = await api.post('/room-reward/claim', formData);
+      if (res.status) {
+        alert(res.message || "Reward claimed successfully!");
+        fetchRewardData(); // Refresh data after claiming
+      } else {
+        alert(res.message || "Failed to claim reward");
+      }
+    } catch (err) {
+      console.error("RoomReward: Claim error:", err);
+      alert("Error while claiming reward.");
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log("RoomReward: id from params:", id);
+    if (id) {
+      fetchRewardData();
+    } else {
+      console.warn("RoomReward: No id provided in URL params.");
+      setLoading(false);
+    }
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="rr-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffc840' }}>
+        <p>Loading reward details...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rr-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ff4040', padding: '20px', textAlign: 'center' }}>
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  const slabs = data?.slabs || [];
 
   return (
     <>
@@ -302,14 +411,36 @@ export default function RoomRewardPage() {
             <button className="rr-nav-btn">&#8249;</button>
             {/* <span className="rr-nav-title">Room Reward</span> */}
             <div className="rr-help-btn">?</div>
-          </div> 
+          </div>
 
           {/* Coin count over the "Available" ribbon */}
           <div className="rr-available-area">
-            <span className="rr-coin-count">0</span>
+            <span className="rr-coin-count">{data?.available_reward_text || "0"}</span>
             <CoinIcon size={28} />
           </div>
         </div>
+
+        {/* ══ CLAIMABLE REWARDS SECTION ═══════════════════════════════ */}
+        {data?.claimable_rewards && data.claimable_rewards.length > 0 && (
+          <div className="rr-claim-section">
+            <div className="rr-claim-title">Rewards Ready to Claim</div>
+            {data.claimable_rewards.map((reward) => (
+              <div key={reward.id} className="rr-claim-item">
+                <div className="rr-claim-info">
+                  <CoinIcon size={20} />
+                  <span>{reward.reward_coins_text || reward.reward_coins} Coins</span>
+                </div>
+                <button 
+                  className="rr-claim-btn"
+                  onClick={() => handleClaim(reward.id)}
+                  disabled={isClaiming}
+                >
+                  {isClaiming ? "Claiming..." : "CLAIM"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ══ FRAMED SECTION — ar111.png ═══════════════════════════ */}
         <div className="rr-frame-wrap">
@@ -339,12 +470,12 @@ export default function RoomRewardPage() {
                 </tr>
               </thead>
               <tbody>
-                {REWARD_ROWS.map((row, i) => (
+                {slabs.map((row, i) => (
                   <tr
-                    key={row.contribution}
-                    className={milestoneIndexes.has(i) ? "milestone" : ""}
+                    key={row.id || i}
+                    className={(milestoneIndexes.has(i) || row.is_reached) ? "milestone" : ""}
                   >
-                    <td>{row.contribution}</td>
+                    <td>{row.room_contribution_text}</td>
                     <td>
                       <span style={{
                         display: "flex",
@@ -354,7 +485,7 @@ export default function RoomRewardPage() {
                         color: "#ffc840",
                         fontWeight: 900,
                       }}>
-                        {row.reward}
+                        {row.reward_coins_text}
                         <CoinIcon size={16} />
                       </span>
                     </td>
@@ -368,16 +499,16 @@ export default function RoomRewardPage() {
         {/* ══ STICKY FOOTER ════════════════════════════════════════ */}
         <div className="rr-footer">
           <div className="rr-footer-item">
-            <span className="rr-footer-label">This week's contribution</span>
+            <span className="rr-footer-label">Today's contribution</span>
             <div className="rr-footer-value">
-              <span className="rr-footer-pill">3.9K</span>
+              <span className="rr-footer-pill">{data?.today_contribution_text || "0"}</span>
               <CoinIcon size={20} />
             </div>
           </div>
           <div className="rr-footer-item">
-            <span className="rr-footer-label">This week's rewards</span>
+            <span className="rr-footer-label">Today's rewards</span>
             <div className="rr-footer-value">
-              <span style={{ color: "#ffc840" }}>0</span>
+              <span style={{ color: "#ffc840" }}>{data?.today_rewards_text || "0"}</span>
               <CoinIcon size={20} />
             </div>
           </div>
