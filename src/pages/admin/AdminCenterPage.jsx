@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import AVATAR_IMG     from "../../assets/ht heaven place.webp";
 import ICON_BALANCE   from "../../assets/Balance.webp";
 import ICON_MEMBERS   from "../../assets/menber list.webp";
@@ -7,6 +8,35 @@ import ICON_INV_AGENT from "../../assets/invite agent.webp";
 import ICON_INV_BD    from "../../assets/invite BD.webp";
 import PROFILE_BG from "../../assets/admin center 2.webp";
 import HOST_HEADER_BG from "../../assets/host_header_bg.webp";
+
+
+/* ─── helpers ─────────────────────────────────────────── */
+const MONTH_NAMES = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December"
+];
+
+/** Returns the last day of a given month (1-indexed) */
+function lastDayOf(year, month) {
+  return new Date(year, month, 0).getDate(); // month is 1-based here
+}
+
+/** Build the picker list: current month ± 6 months */
+function buildMonthOptions(refYear, refMonth) {
+  const options = [];
+  for (let delta = -6; delta <= 6; delta++) {
+    let m = refMonth + delta;
+    let y = refYear;
+    while (m < 1)  { m += 12; y--; }
+    while (m > 12) { m -= 12; y++; }
+    options.push({ year: y, month: m });
+  }
+  return options;
+}
+
+/* ─── static bar data (replace with real data as needed) ─ */
+const BARS_FIRST_HALF  = [4,5,4,7,5,4,9,6,8,5,10,14,10,18,22];
+const BARS_SECOND_HALF = [4,6,4,9,5,4,12,7,8,10,14,6,18,10,22];
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
@@ -44,7 +74,7 @@ const styles = `
     padding:14px 16px;
     cursor:pointer;
     transition:background .15s;
-    min-width:0; /* prevent grid blowout */
+    min-width:0;
   }
   .action-card:hover { background:#f5f6ff; }
 
@@ -57,7 +87,6 @@ const styles = `
     display:flex;
     align-items:center;
     justify-content:space-between;
-    /* tighter padding so nothing overlaps on 360px */
     padding:10px 10px;
     cursor:pointer;
     transition:background .15s;
@@ -67,66 +96,37 @@ const styles = `
   }
   .action-card-grid:hover { background:#f5f6ff; }
 
-  /* Left slot inside grid card */
   .grid-card-left {
-    display:flex;
-    align-items:center;
-    gap:8px;
-    min-width:0;
-    flex:1;
-    overflow:hidden;
+    display:flex; align-items:center; gap:8px;
+    min-width:0; flex:1; overflow:hidden;
   }
-
-  /* Icon inside grid card – slightly smaller */
   .grid-icon {
-    width:44px;
-    height:44px;
-    border-radius:12px;
-    object-fit:cover;
-    flex-shrink:0;
+    width:44px; height:44px; border-radius:12px;
+    object-fit:cover; flex-shrink:0;
   }
-
-  /* Label inside grid card */
   .grid-label {
-    font-size:13px;
-    font-weight:700;
-    color:#1a1a2e;
-    line-height:1.35;
-    min-width:0;
-    word-break:break-word;
+    font-size:13px; font-weight:700; color:#1a1a2e;
+    line-height:1.35; min-width:0; word-break:break-word;
   }
-
-  /* EQ bars */
-  .eq-bar {
-    display:inline-block; width:4px; border-radius:2px 2px 0 0; margin:0 1.5px;
-    animation:eq var(--dur,0.8s) ease-in-out infinite alternate;
-    transform-origin:bottom;
-  }
-  @keyframes eq { from{transform:scaleY(0.1)} to{transform:scaleY(1)} }
 
   .stat-bar { display:inline-block; border-radius:3px 3px 0 0; margin:0 1.5px; }
 
-  /* Arrow button – fixed size, never shrinks */
   .arrow-btn {
-    width:32px;
-    height:30px;
-    border-radius:50%;
-    background:#eef0f8;
-    border:1px solid rgba(0,0,0,0.07);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:22px;
-    color:#aaa;
-    flex-shrink:0; /* KEY: never compress */
+    width:32px; height:30px; border-radius:50%;
+    background:#eef0f8; border:1px solid rgba(0,0,0,0.07);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:#aaa; flex-shrink:0;
   }
 
-  .btn-nav   { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#fff; width:36px; height:36px; border-radius:10px; cursor:pointer; font-size:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .btn-nav {
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    color:#fff; width:36px; height:36px; border-radius:10px; cursor:pointer;
+    font-size:20px; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
 
   /* Profile card */
   .profile-card {
-    background: transparent;
-    border-radius:16px; padding:14px 16px;
+    background:transparent; border-radius:16px; padding:14px 16px;
     display:flex; align-items:center; justify-content:space-between;
     position:relative; overflow:hidden; color:#fff;
     border:1px solid rgba(120,100,255,0.35);
@@ -167,7 +167,77 @@ const styles = `
     box-shadow:0 2px 12px rgba(247,151,30,0.5);
   }
 
-  /* ── Responsive: very narrow (≤360px, Galaxy S8+) ── */
+  /* ── Month filter button ── */
+  .month-filter-btn {
+    display:flex; align-items:center; gap:7px;
+    background:#fff; border:1.5px solid rgba(68,102,255,0.18);
+    border-radius:24px; padding:7px 14px 7px 12px;
+    cursor:pointer; font-family:'Nunito',sans-serif;
+    font-size:14px; font-weight:700; color:#1a1a2e;
+    box-shadow:0 2px 10px rgba(68,102,255,0.09);
+    transition:all .15s; white-space:nowrap;
+    align-self:flex-start;
+  }
+  .month-filter-btn:hover {
+    background:#f0f2ff;
+    border-color:rgba(68,102,255,0.35);
+    box-shadow:0 4px 16px rgba(68,102,255,0.15);
+  }
+  .month-filter-btn .cal-icon {
+    font-size:16px; flex-shrink:0;
+  }
+  .month-filter-btn .chevron {
+    font-size:13px; color:#7090cc; margin-left:2px;
+    transition:transform .2s;
+  }
+  .month-filter-btn.open .chevron { transform:rotate(180deg); }
+
+  /* ── Month picker dropdown ── */
+  .month-picker-overlay {
+    position:fixed; inset:0; z-index:50;
+  }
+  .month-picker-dropdown {
+    position:absolute; top:calc(100% + 8px); left:0;
+    background:#fff; border-radius:18px;
+    border:1.5px solid rgba(68,102,255,0.15);
+    box-shadow:0 12px 48px rgba(30,40,120,0.18);
+    width:220px; overflow:hidden; z-index:100;
+    animation:dropIn .18s ease;
+  }
+  @keyframes dropIn {
+    from { opacity:0; transform:translateY(-6px) scale(0.97); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .month-picker-header {
+    padding:12px 14px 8px;
+    font-size:11px; font-weight:800; letter-spacing:0.08em;
+    color:#999; text-transform:uppercase;
+    border-bottom:1px solid #f0f0f8;
+  }
+  .month-picker-list {
+    max-height:260px; overflow-y:auto;
+    padding:6px 0;
+  }
+  .month-picker-list::-webkit-scrollbar { width:4px; }
+  .month-picker-list::-webkit-scrollbar-track { background:transparent; }
+  .month-picker-list::-webkit-scrollbar-thumb { background:#d0d4f0; border-radius:4px; }
+  .month-picker-item {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; cursor:pointer; font-size:14px;
+    font-weight:700; color:#1a1a2e; transition:background .12s;
+  }
+  .month-picker-item:hover { background:#f2f4ff; }
+  .month-picker-item.selected {
+    background:linear-gradient(90deg,#f0f2ff,#e8edff);
+    color:#3355dd;
+  }
+  .month-picker-item .check { color:#3355dd; font-size:16px; }
+  .month-picker-item .today-dot {
+    width:7px; height:7px; border-radius:50%;
+    background:#4466ff; flex-shrink:0;
+  }
+
+  /* ── Responsive ── */
   @media (max-width: 360px) {
     .main-content { padding:12px 10px 28px; gap:10px; }
     .action-card-grid { padding:9px 8px; gap:3px; }
@@ -175,45 +245,150 @@ const styles = `
     .grid-label { font-size:12px; }
     .arrow-btn { width:24px; height:24px; font-size:15px; }
     .ac-card { border-radius:14px; }
+    .month-filter-btn { font-size:13px; padding:6px 11px 6px 10px; }
   }
 `;
 
+/* ─── Stat Card Component ──────────────────────────────── */
+function StatCard({ label, bars, accentColor, accentHighlight, iconBg, iconShadow }) {
+  return (
+    <div className="ac-card" style={{ padding:14, overflow:"hidden" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+        <div style={{
+          width:40, height:40, borderRadius:"50%", flexShrink:0,
+          background:iconBg, display:"flex", alignItems:"center",
+          justifyContent:"center", fontSize:18, color:"#fff", fontWeight:800,
+          boxShadow:iconShadow
+        }}>$</div>
+        <div>
+          <p style={{ fontSize:22, fontWeight:800, margin:0, lineHeight:1, color:"#1a1a2e" }}>$0</p>
+          <p style={{ fontSize:11, color:"#999", margin:"2px 0 0" }}>{label}</p>
+        </div>
+      </div>
+      <div style={{ display:"flex", alignItems:"flex-end", height:32, gap:2 }}>
+        {bars.map((h, i) => (
+          <div key={i} className="stat-bar" style={{
+            width: 5, height: h,
+            background: h >= Math.max(...bars) * 0.85
+              ? accentHighlight
+              : `rgba(${accentColor},${0.22 + h * 0.025})`
+          }}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Month Filter Button + Picker ─────────────────────── */
+function MonthFilter({ selectedYear, selectedMonth, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const now = new Date();
+  const options = buildMonthOptions(now.getFullYear(), now.getMonth() + 1);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const label = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+
+  return (
+    <div ref={wrapRef} style={{ position:"relative", alignSelf:"flex-start" }}>
+      <button
+        className={`month-filter-btn${open ? " open" : ""}`}
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="cal-icon">📅</span>
+        {label}
+        {isCurrentMonth && (
+          <span style={{
+            fontSize:10, fontWeight:800, background:"#4466ff", color:"#fff",
+            borderRadius:8, padding:"1px 6px", marginLeft:2
+          }}>NOW</span>
+        )}
+        <span className="chevron">▾</span>
+      </button>
+
+      {open && (
+        <div className="month-picker-dropdown">
+          <div className="month-picker-header">Select Month</div>
+          <div className="month-picker-list">
+            {options.map(({ year, month }) => {
+              const isSelected = year === selectedYear && month === selectedMonth;
+              const isCurrent  = year === now.getFullYear() && month === now.getMonth() + 1;
+              return (
+                <div
+                  key={`${year}-${month}`}
+                  className={`month-picker-item${isSelected ? " selected" : ""}`}
+                  onClick={() => { onChange(year, month); setOpen(false); }}
+                >
+                  <span>{MONTH_NAMES[month - 1]} {year}</span>
+                  <span style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    {isCurrent && <span className="today-dot"/>}
+                    {isSelected && <span className="check">✓</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main Component ────────────────────────────────────── */
 export default function AdminCenter() {
+  const navigate =useNavigate();
+  const now = new Date();
+  const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+
+  // Derive half-month labels dynamically
+  const endDay = lastDayOf(selectedYear, selectedMonth); // e.g. 28/30/31
+  const label1 = `1–15`;
+  const label2 = `16–${endDay}`;
+
   return (
     <>
       <style>{styles}</style>
       <div className="ac-root">
 
-        {/* ── ZONE 1: Header with background image ── */}
+        {/* ── ZONE 1: Header ── */}
         <div style={{
-          backgroundImage: `url(${HOST_HEADER_BG})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          padding: "14px 14px 22px",
+          backgroundImage:`url(${HOST_HEADER_BG})`,
+          backgroundSize:"cover", backgroundPosition:"center",
+          padding:"14px 14px 22px",
         }}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",position:"relative",zIndex:2}}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", position:"relative", zIndex:2 }}>
             <button className="btn-nav">&#8249;</button>
-            <h1 style={{fontSize:19,fontWeight:800,letterSpacing:"0.2px",margin:0,color:"#fff"}}>Admin Center</h1>
+            <h1 style={{ fontSize:19, fontWeight:800, letterSpacing:"0.2px", margin:0, color:"#fff" }}>Admin Center</h1>
             <button className="btn-nav">&#10005;</button>
           </div>
         </div>
 
-        {/* ── ZONE 2: Indigo base + profile card ── */}
+        {/* ── ZONE 2: Profile card ── */}
         <div className="zone-bottom">
-          <div className="profile-card" style={{ backgroundImage: `url(${PROFILE_BG})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+          <div className="profile-card" style={{ backgroundImage:`url(${PROFILE_BG})`, backgroundSize:"cover", backgroundPosition:"center" }}>
             <div className="card-wave"/>
-            <div style={{display:"flex",alignItems:"center",gap:12,position:"relative",zIndex:1}}>
+            <div style={{ display:"flex", alignItems:"center", gap:12, position:"relative", zIndex:1 }}>
               <div className="avatar-ring">
                 <div className="avatar-inner">
-                  <img src={AVATAR_IMG} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:"50%"}}/>
+                  <img src={AVATAR_IMG} alt="avatar" style={{ width:"100%", height:"100%", objectFit:"cover", borderRadius:"50%" }}/>
                 </div>
               </div>
               <div>
-                <p style={{fontWeight:800,fontSize:16,margin:"0 0 4px",color:"#fff"}}>HT = Heaven place</p>
-                <p style={{fontSize:13,color:"rgba(255,255,255,0.6)",margin:0}}>ID: 1</p>
+                <p style={{ fontWeight:800, fontSize:16, margin:"0 0 4px", color:"#fff" }}>HT = Heaven place</p>
+                <p style={{ fontSize:13, color:"rgba(255,255,255,0.6)", margin:0 }}>ID: 1</p>
               </div>
             </div>
-            <div className="admin-badge" style={{position:"relative",zIndex:1}}>
+            <div className="admin-badge" style={{ position:"relative", zIndex:1 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="#5c2d00">
                 <path d="M2 19l2-8 4 4 4-8 4 8 4-4 2 8H2z"/>
               </svg>
@@ -225,70 +400,67 @@ export default function AdminCenter() {
         {/* ── WHITE MAIN CONTENT ── */}
         <div className="main-content">
 
-          {/* Stats Row */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <div className="ac-card" style={{padding:14,overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                <div style={{width:40,height:40,borderRadius:"50%",flexShrink:0,background:"linear-gradient(135deg,#4466ff,#2244cc)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff",fontWeight:800,boxShadow:"0 4px 12px rgba(68,102,255,0.35)"}}>$</div>
-                <div>
-                  <p style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1,color:"#1a1a2e"}}>$0</p>
-                  <p style={{fontSize:11,color:"#999",margin:"2px 0 0"}}>This month</p>
-                </div>
-              </div>
-              <div style={{display:"flex",alignItems:"flex-end",height:32,gap:2}}>
-                {[4,5,4,7,5,4,9,6,8,5,10,14,10,18,22,28,18,32,20].map((h,i)=>(
-                  <div key={i} className="stat-bar" style={{width:5,height:h,background:h>=30?"#7ab5ff":`rgba(100,160,255,${0.25+h*0.022})`}}/>
-                ))}
-              </div>
-            </div>
+          {/* ── Month Filter ── */}
+          <MonthFilter
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            onChange={(y, m) => { setSelectedYear(y); setSelectedMonth(m); }}
+          />
 
-            <div className="ac-card" style={{padding:14,overflow:"hidden"}}>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                <div style={{width:40,height:40,borderRadius:"50%",flexShrink:0,background:"linear-gradient(135deg,#22dd88,#1aaa66)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,color:"#fff",fontWeight:800,boxShadow:"0 4px 12px rgba(34,200,130,0.35)"}}>$</div>
-                <div>
-                  <p style={{fontSize:22,fontWeight:800,margin:0,lineHeight:1,color:"#1a1a2e"}}>$0</p>
-                  <p style={{fontSize:11,color:"#999",margin:"2px 0 0"}}>Last month</p>
-                </div>
-              </div>
-              <div style={{display:"flex",alignItems:"flex-end",height:32,gap:2}}>
-                {[4,6,4,9,5,4,12,7,8,10,14,6,18,10,22,28,14,32,18].map((h,i)=>(
-                  <div key={i} className="stat-bar" style={{width:5,height:h,background:h>=30?"#5ee8bb":`rgba(60,200,140,${0.22+h*0.022})`}}/>
-                ))}
-              </div>
-            </div>
+          {/* ── Stats Row ── */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            <StatCard
+              label={label1}
+              bars={BARS_FIRST_HALF}
+              accentColor="100,160,255"
+              accentHighlight="#7ab5ff"
+              iconBg="linear-gradient(135deg,#4466ff,#2244cc)"
+              iconShadow="0 4px 12px rgba(68,102,255,0.35)"
+            />
+            <StatCard
+              label={label2}
+              bars={BARS_SECOND_HALF}
+              accentColor="60,200,140"
+              accentHighlight="#5ee8bb"
+              iconBg="linear-gradient(135deg,#22dd88,#1aaa66)"
+              iconShadow="0 4px 12px rgba(34,200,130,0.35)"
+            />
           </div>
 
-          {/* Balance – full width row */}
-          <div className="action-card" style={{padding:"16px 18px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              <img src={ICON_BALANCE} alt="Balance" style={{width:52,height:52,borderRadius:14,objectFit:"cover",flexShrink:0}}/>
-              <span style={{fontSize:16,fontWeight:700,color:"#1a1a2e"}}>Balance</span>
+          {/* Balance – full width */}
+          <div className="action-card" style={{ padding:"16px 18px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+              <img src={ICON_BALANCE} alt="Balance" style={{ width:52, height:52, borderRadius:14, objectFit:"cover", flexShrink:0 }}/>
+              <span style={{ fontSize:16, fontWeight:700, color:"#1a1a2e" }}>Balance</span>
             </div>
             <div className="arrow-btn">›</div>
           </div>
 
-          {/* 2×2 Action Grid – uses action-card-grid class */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {/* 2×2 Action Grid */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+       <div
+  className="action-card-grid"
+  onClick={() => navigate("/team")}
+>
+  <div className="grid-card-left">
+    <img src={ICON_MEMBERS} alt="BD List" className="grid-icon"/>
+    <span className="grid-label">
+      BD<br/>List
+    </span>
+  </div>
 
-            {/* Members List */}
-            <div className="action-card-grid">
-              <div className="grid-card-left">
-                <img src={ICON_MEMBERS} alt="Members List" className="grid-icon"/>
-                <span className="grid-label">Members<br/>List</span>
-              </div>
-              <div className="arrow-btn">›</div>
-            </div>
-
-            {/* Agent List */}
-            <div className="action-card-grid">
+  <div className="arrow-btn">›</div>
+</div>
+            <div 
+              className="action-card-grid"
+              onClick={() => navigate("/agent")}
+            >
               <div className="grid-card-left">
                 <img src={ICON_AGENT} alt="Agent List" className="grid-icon"/>
                 <span className="grid-label">Agent<br/>List</span>
               </div>
               <div className="arrow-btn">›</div>
             </div>
-
-            {/* Invite Agent */}
             <div className="action-card-grid">
               <div className="grid-card-left">
                 <img src={ICON_INV_AGENT} alt="Invite Agent" className="grid-icon"/>
@@ -296,8 +468,6 @@ export default function AdminCenter() {
               </div>
               <div className="arrow-btn">›</div>
             </div>
-
-            {/* Invite BD */}
             <div className="action-card-grid">
               <div className="grid-card-left">
                 <img src={ICON_INV_BD} alt="Invite BD" className="grid-icon"/>
@@ -305,10 +475,9 @@ export default function AdminCenter() {
               </div>
               <div className="arrow-btn">›</div>
             </div>
-
           </div>
-        </div>
 
+        </div>
       </div>
     </>
   );
