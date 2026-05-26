@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 const MEMBERS = [
   {
     id: 1,
@@ -27,7 +28,7 @@ const MEMBERS = [
 
 function CoinIcon() {
   return (
-    <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 22 22" fill="none">
+    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 22 22" fill="none">
       <ellipse cx="11" cy="6"  rx="7" ry="3.2" fill="#f59e0b"/>
       <rect x="4" y="6" width="14" height="3" fill="#f59e0b"/>
       <ellipse cx="11" cy="9"  rx="7" ry="3.2" fill="#fbbf24"/>
@@ -38,31 +39,39 @@ function CoinIcon() {
 }
 
 function MemberCard({ member }) {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm">
+    <div className="bg-white rounded-2xl p-3.5 shadow-sm w-full">
       {/* Top row */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {/* Avatar */}
         <div
-          className={`w-14 h-14 rounded-full flex-shrink-0 bg-gradient-to-br ${member.avatarBg} flex items-center justify-center text-2xl overflow-hidden`}
+          className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex-shrink-0 bg-gradient-to-br ${member.avatarBg} flex items-center justify-center text-xl sm:text-2xl overflow-hidden`}
         >
           {member.avatarEmoji}
         </div>
 
         {/* Name + ID */}
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-extrabold text-gray-900 truncate">{member.name}</p>
-          <p className=""text-sm font-semibold text-gray-400 mt-5>ID: {member.uid}</p>
-        </div>
+      <div className="flex-1 min-w-[110px]">
+  <p className="text-sm sm:text-base font-extrabold text-gray-900 whitespace-nowrap">
+    {member.name}
+  </p>
+
+  <p className="text-xs sm:text-sm font-semibold text-gray-400 mt-0.5">
+    ID: {member.uid}
+  </p>
+</div>
 
         {/* Right badges */}
-        <div className="flex items-center justify-end gap-3 mb-8">
-          <div className="border border-violet-400 rounded-full px-3 py-1 text-xs font-bold text-violet-500 whitespace-nowrap"
-          onClick={() => navigate("/team")}>
+    <div className="flex items-center justify-end gap-1.5 mb-8 flex-shrink-0">
+          <div
+            className="border border-violet-400 rounded-full px-2 py-[2px] text-[10px] font-bold text-violet-500 whitespace-nowrap cursor-pointer"
+            onClick={() => navigate("/agent")}
+          >
             Agent: {member.agentCount}
           </div>
-          <div className="border border-amber-400 rounded-full px-3 py-1 text-xs font-bold text-amber-500 whitespace-nowrap flex items-center gap-1.5">
+          <div className="border border-amber-400 rounded-full px-2 py-[2px] text-[10px] font-bold text-amber-500 whitespace-nowrap flex items-center gap-1">
             <CoinIcon />
             {member.coins}
           </div>
@@ -70,11 +79,11 @@ function MemberCard({ member }) {
       </div>
 
       {/* Bottom row */}
-      <div className="flex items-center justify-end gap-7 -mt-5 ">
-        <div className="border border-amber-400 rounded-full px-3 py-1 text-xs font-bold text-amber-500 whitespace-nowrap">
+      <div className="flex items-center justify-end gap-4 -mt-4">
+        <div className="border border-amber-400 rounded-full px-2 py-[2px] text-[10px] font-bold text-amber-500 whitespace-nowrap">
           <span className="text-gray-800">Total: </span>{member.total}
         </div>
-        <p className="text-sm font-semibold text-gray-400">{member.date}</p>
+        <p className="text-xs sm:text-sm font-semibold text-gray-400">{member.date}</p>
       </div>
     </div>
   );
@@ -90,7 +99,7 @@ export default function TeamMembers() {
   );
 
   return (
-    <div className="min-h-screen bg-[#dce6f5] flex flex-col">
+    <div className="min-h-screen w-full bg-[#dce6f5] flex flex-col">
 
       {/* Header */}
       <div className="bg-white flex items-center justify-center px-4 py-4 relative border-b border-gray-100">
@@ -101,10 +110,10 @@ export default function TeamMembers() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 px-3.5 py-4 flex flex-col gap-3.5">
+      <div className="flex-1 w-full max-w-lg mx-auto px-3.5 py-4 flex flex-col gap-3.5">
 
         {/* Search bar */}
-        <div className="relative">
+        <div className="relative w-full">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="7" />
@@ -116,19 +125,19 @@ export default function TeamMembers() {
             placeholder="Please enter an account"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white rounded-full py-3.5 pl-11 pr-5 text-sm text-gray-700 placeholder-gray-300 outline-none shadow-sm"
+            className="w-full bg-white rounded-full py-3 sm:py-3.5 pl-11 pr-5 text-sm text-gray-700 placeholder-gray-300 outline-none shadow-sm"
           />
         </div>
 
         {/* Member Cards */}
         {filtered.length > 0 ? (
-          filtered.map((m) => <MemberCard key={m.id} member={m}  />)
+          filtered.map((m) => <MemberCard key={m.id} member={m} />)
         ) : (
           <p className="text-center text-gray-400 text-sm mt-10">No members found</p>
         )}
 
         {/* Load more */}
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 pb-4">
           <button className="text-sky-400 font-bold text-base hover:opacity-70 active:opacity-50">
             Load more
           </button>
