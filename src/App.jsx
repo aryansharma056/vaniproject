@@ -8,10 +8,13 @@ import Seller from "./pages/seller/Seller";
 import HostCenter from "./pages/host/HostCenterPage"
 import MerchantPage from "./Pages/Merchant/MerchantPage";
 import Room from "./pages/room/RoomReward"
-import TeamMembers from "./pages/admin/TeamMember";
-import AgentMembers from "./pages/admin/AgentMember";
-import Members from "./pages/admin/Members";
-import TeammateDetail from './pages/admin/Teammatedetail';
+import TeamMembers from "./pages/admin/list/TeamMember";
+import AgentMembers from "./pages/admin/list/AgentMember";
+import Members from "./pages/admin/list/Members";
+import TeammateDetail from './pages/admin/list/TeammateDetail';
+import FriendsList from './pages/admin/invite/FriendList';
+import Wallet from './pages/admin/balance/BalancePage';
+import WalletDetails from './pages/admin/balance/WalletDetails';
 
 function App() {
   return (
@@ -32,6 +35,9 @@ function App() {
     <Route path="/agent" element={<AgentMembers />} />
     <Route path ="/members" element={<Members />} />
     <Route path="/teammate/:uid" element={<TeammateDetail />} />
+    <Route path="/invite" element={<FriendsList />} />
+    <Route path="/wallet" element={<Wallet />} />
+    <Route path= "/wallet/details" element={<WalletDetails />} />
   </Routes>
   )
 }
