@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 import BG_IMG from "../../assets/bg.webp"
 import AGENCY_HEADER_BG from "../../assets/AGENCY_HEADER_BG.webp"
 import ICON_BALANCE    from "../../assets/Balance.webp"
@@ -172,6 +174,39 @@ const CARDS = [
 ];
 
 export default function AgencyPage() {
+  const navigate = useNavigate();
+  const [agencyDetails, setAgencyDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAgencyDetails = async () => {
+    try {
+      const result = await api.get("/agency/agency-details");
+      console.log("Agency Details:", result);
+
+      if (result?.status) {
+        setAgencyDetails(result.data);
+      }
+    } catch (error) {
+      console.error("Agency details error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAgencyDetails();
+  }, []);
+
+  const handleCardClick = (label) => {
+    if (label === "Request") {
+      navigate("/agency/requests");
+    } else if (label === "Members List") {
+      navigate("/agency/members");
+    } else if (label === "Invite") {
+      navigate("/agency/invite");
+    }
+  };
+
   return (
     <>
       <style>{styles}</style>
@@ -215,7 +250,26 @@ export default function AgencyPage() {
           {/* Avatar */}
           <div className="avatar-ring">
             <div className="avatar-inner">
-              <svg className="avatar-icon-shadow" width="36" height="36" viewBox="0 0 24 24" fill="none">
+              {agencyDetails?.image ? (
+                <img
+                  src={agencyDetails.image}
+                  alt={agencyDetails.name}
+                  className="avatar-icon-shadow"
+                  style={{width:36,height:36,borderRadius:"50%",objectFit:"cover"}}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextElementSibling.style.display = 'flex';
+                  }}
+                />
+              ) : null}
+              <svg
+                className="avatar-icon-shadow"
+                width="36"
+                height="36"
+                viewBox="0 0 24 24"
+                fill="none"
+                style={{display: agencyDetails?.image ? 'none' : 'flex'}}
+              >
                 <circle cx="12" cy="8" r="4.5" fill="#2244cc"/>
                 <path d="M3 21c0-5 4-9 9-9s9 4 9 9" fill="#2244cc" opacity="0.85"/>
               </svg>
@@ -224,8 +278,8 @@ export default function AgencyPage() {
 
           {/* Info — flex:1 + min-width:0 lets it compress gracefully */}
           <div className="profile-info">
-            <p className="profile-name">HT=Heaven place</p>
-            <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",fontWeight:600}}>ID: 1</p>
+            <p className="profile-name">{loading ? "Loading..." : (agencyDetails?.name || "Agency")}</p>
+            <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",fontWeight:600}}>ID: {loading ? "..." : (agencyDetails?.uid || "-")}</p>
           </div>
 
           {/* Badge — flex-shrink:0 keeps it intact */}
@@ -240,7 +294,7 @@ export default function AgencyPage() {
           margin:"0 16px 24px",
         }}>
           {CARDS.map(({ label, img }) => (
-            <div key={label} className="action-card">
+            <div key={label} className="action-card" onClick={() => handleCardClick(label)}>
               <img src={img} alt={label} className="card-icon"/>
               <span className="card-label">{label}</span>
               <span className="card-arrow">›</span>

@@ -14,7 +14,8 @@ const api = axios.create({
 // Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = '2874|rElMTZpzXxxPYsO4xbAjtdqDxkN0iBPtz4FTEdQv03fc36f1';
+    // Get token from localStorage (injected by Flutter WebView)
+    const token = localStorage.getItem('token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },

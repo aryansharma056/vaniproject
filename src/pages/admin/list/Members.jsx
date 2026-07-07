@@ -8,35 +8,10 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-// ── MOCK DATA ─────────────────────────────────────────────────
-const MOCK_MEMBERS = [
-  {
-    id: 1, name: "Mr Yoshio", uid: "2482036", agentCount: 9,
-    coins: "5.71M", total: "635$", date: "2026-05",
-    avatarEmoji: "🎮", avatarBg: "from-violet-600 to-blue-600", status: "Agent",
-  },
-  {
-    id: 2, name: "ShiVikA Th", uid: "2515965", agentCount: 5,
-    coins: "239.53K", total: "16$", date: "2026-05",
-    avatarEmoji: "👩", avatarBg: "from-pink-500 to-purple-500", status: "Member",
-  },
-  {
-    id: 3, name: "Mr Yash", uid: "5482036", agentCount: 15,
-    coins: "4.91M", total: "710$", date: "2026-05",
-    avatarEmoji: "🦊", avatarBg: "from-orange-500 to-amber-500", status: "Agent",
-  },
-  {
-    id: 4, name: "tirth", uid: "5545965", agentCount: 2,
-    coins: "321.13K", total: "19$", date: "2026-05",
-    avatarEmoji: "🔥", avatarBg: "from-red-500 to-pink-500", status: "Member",
-  },
-];
-
-async function fetchMembers() {
-  return new Promise((resolve) => setTimeout(() => resolve(MOCK_MEMBERS), 600));
-}
+import api from "../../../services/api";
+import AVATAR_IMG from "../../../assets/ht heaven place.webp";
 
 // ── COIN ICON ─────────────────────────────────────────────────
 function CoinIcon({ size = 14 }) {
@@ -46,11 +21,11 @@ function CoinIcon({ size = 14 }) {
       viewBox="0 0 22 22"
       fill="none"
     >
-      <ellipse cx="11" cy="6"  rx="7" ry="3.2" fill="#f59e0b"/>
-      <rect    x="4"  y="6"  width="14" height="3" fill="#f59e0b"/>
-      <ellipse cx="11" cy="9"  rx="7" ry="3.2" fill="#fbbf24"/>
-      <rect    x="4"  y="9"  width="14" height="3" fill="#f59e0b"/>
-      <ellipse cx="11" cy="12" rx="7" ry="3.2" fill="#fcd34d"/>
+      <ellipse cx="11" cy="6" rx="7" ry="3.2" fill="#f59e0b" />
+      <rect x="4" y="6" width="14" height="3" fill="#f59e0b" />
+      <ellipse cx="11" cy="9" rx="7" ry="3.2" fill="#fbbf24" />
+      <rect x="4" y="9" width="14" height="3" fill="#f59e0b" />
+      <ellipse cx="11" cy="12" rx="7" ry="3.2" fill="#fcd34d" />
     </svg>
   );
 }
@@ -81,18 +56,26 @@ function BottomSheet({ member, onClose, onViewDetails }) {
 
   useEffect(() => {
     if (member) {
-      requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)));
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => setAnimateIn(true)),
+      );
     }
   }, [member]);
 
   const dismiss = () => {
     setAnimateIn(false);
-    setTimeout(() => { onClose(); setStage(1); }, 280);
+    setTimeout(() => {
+      onClose();
+      setStage(1);
+    }, 280);
   };
 
   const goToDetails = () => {
     setAnimateIn(false);
-    setTimeout(() => { onViewDetails(member); setStage(1); }, 280);
+    setTimeout(() => {
+      onViewDetails(member);
+      setStage(1);
+    }, 280);
   };
 
   if (!member) return null;
@@ -146,32 +129,48 @@ function BottomSheet({ member, onClose, onViewDetails }) {
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-extrabold text-gray-900 truncate">{member.name}</p>
+                    <p className="text-sm font-extrabold text-gray-900 truncate">
+                      {member.name}
+                    </p>
                     {member.status === "Agent" && (
                       <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0">
                         Agent
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400 font-semibold">ID: {member.uid}</p>
+                  <p className="text-xs text-gray-400 font-semibold">
+                    ID: {member.uid}
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="bg-violet-50 rounded-xl p-2.5">
-                  <p className="text-[10px] text-violet-400 font-semibold mb-1">Agents</p>
-                  <p className="text-sm font-extrabold text-violet-700">{member.agentCount}</p>
+                  <p className="text-[10px] text-violet-400 font-semibold mb-1">
+                    Agents
+                  </p>
+                  <p className="text-sm font-extrabold text-violet-700">
+                    {member.agentCount}
+                  </p>
                 </div>
                 <div className="bg-amber-50 rounded-xl p-2.5 flex flex-col">
-                  <p className="text-[10px] text-amber-400 font-semibold mb-1">Coins</p>
+                  <p className="text-[10px] text-amber-400 font-semibold mb-1">
+                    Coins
+                  </p>
                   <div className="flex items-center gap-1">
                     <CoinIcon />
-                    <p className="text-sm font-extrabold text-amber-600">{member.coins}</p>
+                    <p className="text-sm font-extrabold text-amber-600">
+                      {member.coins}
+                    </p>
                   </div>
                 </div>
                 <div className="bg-green-50 rounded-xl p-2.5 col-span-2">
-                  <p className="text-[10px] text-green-400 font-semibold mb-1">Total Earned</p>
-                  <p className="text-sm font-extrabold text-green-700">{member.total}</p>
+                  <p className="text-[10px] text-green-400 font-semibold mb-1">
+                    Total Earned
+                  </p>
+                  <p className="text-sm font-extrabold text-green-700">
+                    {member.total}
+                  </p>
                 </div>
               </div>
 
@@ -196,62 +195,70 @@ function BottomSheet({ member, onClose, onViewDetails }) {
   );
 }
 
-// ── MEMBER CARD ───────────────────────────────────────────────
 function MemberCard({ member, onClick }) {
   return (
     <div
       className="bg-white rounded-2xl p-3 shadow-sm active:scale-[0.98] transition-transform cursor-pointer sm:p-4"
       onClick={() => onClick(member)}
     >
-      {/* Top row: avatar + name + pills */}
+      {/* Top */}
       <div className="flex items-start gap-2.5 sm:gap-3">
         {/* Avatar */}
-        <div
-          className={`w-11 h-11 rounded-full flex-shrink-0 bg-gradient-to-br ${member.avatarBg} flex items-center justify-center text-xl sm:w-14 sm:h-14 sm:text-2xl`}
-        >
-          {member.avatarEmoji}
+        <div className="w-11 h-11 rounded-full overflow-hidden flex-shrink-0 bg-gray-200 sm:w-14 sm:h-14">
+          <img
+            src={member.image || AVATAR_IMG}
+            alt={member.name}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = AVATAR_IMG;
+            }}
+          />
         </div>
 
         {/* Name + ID */}
         <div className="flex-1 min-w-0 pt-0.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-sm font-extrabold text-gray-900 truncate sm:text-base">
-              {member.name}
-            </p>
-            {member.status === "Agent" && (
-              <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 sm:text-[10px] sm:px-2">
-                Agent
-              </span>
-            )}
-          </div>
+          <p className="text-sm font-extrabold text-gray-900 truncate sm:text-base">
+            {member.name}
+          </p>
+
           <p className="text-xs font-semibold text-gray-400 mt-0.5">
             ID: {member.uid}
           </p>
         </div>
 
-        {/* Right pills: Agent count + Coins */}
+        {/* Right Pills */}
+        {/* Right Pills */}
         <div className="flex items-center justify-end gap-1.5 mb-8 flex-shrink-0">
-          <div className="border border-violet-400 rounded-full px-2 py-0.5 flex items-center gap-1 whitespace-nowrap">
-            <span className="text-[10px] font-bold text-violet-600 sm:text-xs">
-              Agent: {member.agentCount}
-            </span>
-          </div>
-          <div className="border border-amber-400 rounded-full px-2 py-0.5 flex items-center gap-1 whitespace-nowrap">
+          <div className="border border-amber-400 rounded-full px-2 py-0.5 flex items-center gap-1">
             <CoinIcon size={12} />
             <span className="text-[10px] font-bold text-amber-500 sm:text-xs">
-              {member.coins}
+              0
             </span>
           </div>
         </div>
       </div>
 
-      {/* Bottom row: Total + Date */}
+      {/* Bottom */}
       <div className="flex items-center justify-end gap-4 sm:gap-7 -mt-3">
         <div className="border border-amber-400 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-          <span className="text-[10px] font-bold text-gray-800 sm:text-xs">Total: </span>
-          <span className="text-[10px] font-bold text-amber-500 sm:text-xs">{member.total}</span>
+          <span className="text-[10px] font-bold text-gray-800 sm:text-xs">
+            Total:
+          </span>
+
+          <span className="text-[10px] font-bold text-amber-500 sm:text-xs">
+            0$
+          </span>
         </div>
-        <p className="text-xs font-semibold text-gray-400">{member.date}</p>
+
+        <p className="text-xs font-semibold text-gray-400">
+          {member.created_at
+            ? new Date(member.created_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : ""}
+        </p>
       </div>
     </div>
   );
@@ -260,6 +267,11 @@ function MemberCard({ member, onClick }) {
 // ── MAIN PAGE ─────────────────────────────────────────────────
 export default function TeamMembers() {
   const navigate = useNavigate();
+
+  const {
+  agentId,
+  memberType,
+} = useParams();
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -267,17 +279,36 @@ export default function TeamMembers() {
   const [selectedMember, setSelectedMember] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    fetchMembers()
-      .then((data) => setMembers(data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+    const fetchMembers = async () => {
+      try {
+        setLoading(true);
 
+        const result = await api.get(
+          `/admin-center/agent-host-list/${agentId}`,
+        );
+
+        console.log(result);
+
+        if (result?.status) {
+          setMembers(result.data);
+        }
+      } catch (err) {
+        console.error(err);
+
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (agentId) {
+      fetchMembers();
+    }
+  }, [agentId]);
   const filtered = members.filter(
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
-      m.uid.includes(search)
+      m.uid.includes(search),
   );
 
   const handleViewDetails = (member) => {
@@ -297,7 +328,27 @@ export default function TeamMembers() {
       {/* Header */}
       <div className="bg-white flex items-center justify-center px-4 py-3.5 relative border-b border-gray-100 sm:py-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+  if (
+    memberType ===
+    "bd-center"
+  ) {
+    navigate(
+      "/agent/bd-center"
+    );
+  } else if (
+    memberType ===
+    "bd"
+  ) {
+    navigate(
+      `/agent/bd/${agentId}`
+    );
+  } else {
+    navigate(
+      "/agent/normal"
+    );
+  }
+}}
           className="absolute left-3 text-2xl text-gray-800 w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 active:bg-gray-200 sm:left-4"
           aria-label="Go back"
         >
@@ -323,8 +374,8 @@ export default function TeamMembers() {
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <circle cx="11" cy="11" r="7"/>
-              <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+              <circle cx="11" cy="11" r="7" />
+              <line x1="16.5" y1="16.5" x2="22" y2="22" />
             </svg>
           </span>
           <input
@@ -366,9 +417,11 @@ export default function TeamMembers() {
         )}
 
         {/* List */}
-        {!loading && !error && filtered.map((m) => (
-          <MemberCard key={m.id} member={m} onClick={setSelectedMember} />
-        ))}
+        {!loading &&
+          !error &&
+          filtered.map((m) => (
+            <MemberCard key={m.id} member={m} onClick={setSelectedMember} />
+          ))}
 
         {/* Load more */}
         {!loading && !error && filtered.length > 0 && (

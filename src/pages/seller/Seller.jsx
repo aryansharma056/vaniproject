@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 import ICON_MY_COIN  from "../../assets/my coin.webp";
 import ICON_MERCHANT from "../../assets/merchant.webp";
 import ICON_BALANCE  from "../../assets/Balance.webp";
@@ -161,8 +163,132 @@ function CrossSpark({ top, left, size, d, delay }) {
 }
 
 export default function SellerPage() {
+  const navigate = useNavigate();
   const [userId, setUserId] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [balance, setBalance] = useState(0);
+  const [sellerToUserRate, setSellerToUserRate] = useState(8000);
+  const [loading, setLoading] = useState(true);
+  const [searchResult, setSearchResult] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [sendSuccess, setSendSuccess] = useState("");
+
+  // Calculate USD based on quantity and seller_to_user_rate
+  const calculateUSD = () => {
+    const qty = parseFloat(quantity) || 0;
+    const usd = qty / sellerToUserRate;
+    return usd.toFixed(2);
+  };
+
+  const handleSearchUser = async () => {
+    if (!userId.trim()) {
+      setSearchError("Please enter a user ID");
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      setSearchError("");
+      setSearchResult(null);
+      setSelectedUser(null);
+
+      const result = await api.get(`/coinseller/search-recharge-user?user_uid=${userId.trim()}`);
+      console.log("Search User Result:", result);
+
+      if (result?.status && result?.data) {
+        setSearchResult(result.data);
+      } else {
+        setSearchError("User not found");
+      }
+    } catch (error) {
+      console.error("Search user API error:", error);
+      setSearchError("Failed to search user. Please try again.");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!selectedUser) {
+      setSendError("Please select a user first");
+      return;
+    }
+
+    if (!quantity.trim() || parseFloat(quantity) <= 0) {
+      setSendError("Please enter a valid quantity");
+      return;
+    }
+
+    try {
+      setSendLoading(true);
+      setSendError("");
+      setSendSuccess("");
+
+      const payload = {
+        user_uid: selectedUser.uid,
+        coin: parseFloat(quantity)
+      };
+
+      const result = await api.post("/coinseller/recharge-coin", payload);
+      console.log("Send Result:", result);
+
+      if (result?.status) {
+        setSendSuccess(result.message || "Coin recharged successfully");
+        // Update balance
+        const newBalance = balance - parseFloat(quantity);
+        setBalance(newBalance);
+        // Reset form
+        setQuantity("");
+        setSelectedUser(null);
+        setSearchResult(null);
+        setUserId("");
+      } else {
+        setSendError(result.message || "Failed to recharge coins");
+      }
+    } catch (error) {
+      console.error("Send API error:", error);
+      let errorMessage = "Failed to recharge coins. Please try again.";
+      if (error.response?.data?.message) {
+        if (typeof error.response.data.message === 'string') {
+          errorMessage = error.response.data.message;
+        } else if (typeof error.response.data.message === 'object') {
+          const errorKeys = Object.keys(error.response.data.message);
+          if (errorKeys.length > 0) {
+            errorMessage = error.response.data.message[errorKeys[0]][0] || errorMessage;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setSendError(errorMessage);
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchSellerDashboard = async () => {
+      try {
+        const result = await api.get("/coinseller/seller-dashboard");
+        console.log("Seller Dashboard:", result);
+
+        if (result?.status && result?.data) {
+          setBalance(result.data.balance || 0);
+          setSellerToUserRate(result.data.seller_to_user_rate || 8000);
+        }
+      } catch (error) {
+        console.error("Seller dashboard API error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSellerDashboard();
+  }, []);
 
   return (
     <>
@@ -202,7 +328,7 @@ export default function SellerPage() {
             </p>
             <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9, flexWrap:"nowrap" }}>
               <img src={ICON_MY_COIN} alt="coin" className="coin-icon"/>
-              <span className="coin-amount">0.00</span>
+              <span className="coin-amount">{loading ? "..." : balance.toLocaleString()}</span>
             </div>
             <p style={{
               color:"rgba(255,255,255,0.65)", fontWeight:700, letterSpacing:"0.3px",
@@ -222,7 +348,7 @@ export default function SellerPage() {
           <div className="divider-v"/>
 
           {/* Right: History */}
-          <div className="hist-btn">
+          <div className="hist-btn" onClick={() => navigate("/seller/history")}>
             <div className="hist-circle">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                 <rect x="3.5" y="2.5" width="13" height="16" rx="2.5" stroke="white" strokeWidth="1.5"/>
@@ -250,16 +376,60 @@ export default function SellerPage() {
             <input
               placeholder="Please enter user ID"
               value={userId}
-              onChange={e => setUserId(e.target.value)}
+              onChange={e => {
+                setUserId(e.target.value);
+                setSearchError("");
+              }}
+              disabled={searchLoading}
             />
-            <button className="search-btn">
+            <button 
+              className="search-btn" 
+              onClick={handleSearchUser}
+              disabled={searchLoading}
+            >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
                 <circle cx="11" cy="11" r="7" stroke="white" strokeWidth="2"/>
                 <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Search
+              {searchLoading ? "..." : "Search"}
             </button>
           </div>
+          {searchError && <p style={{ fontSize:13, color:"#e53935", marginBottom:16 }}>{searchError}</p>}
+
+          {/* Search Result */}
+          {searchResult && (
+            <div 
+              style={{
+                display:"flex",
+                alignItems:"center",
+                gap:14,
+                padding:14,
+                marginBottom:20,
+                background:"#f5f5f5",
+                borderRadius:12,
+                border:selectedUser?.id === searchResult.id ? "2px solid #3b82f6" : "2px solid transparent",
+                cursor:"pointer"
+              }}
+              onClick={() => setSelectedUser(searchResult)}
+            >
+              <img
+                src={searchResult.image || "https://via.placeholder.com/48"}
+                alt={searchResult.name}
+                style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:"2px solid #e0e0e0" }}
+              />
+              <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <p style={{ fontSize:16, fontWeight:700, color:"#1a1a2e", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>
+                  {searchResult.name}
+                </p>
+                <p style={{ fontSize:13, fontWeight:600, color:"#555", margin:"6px 0 0", lineHeight:1.3 }}>
+                  UID: {searchResult.uid}
+                </p>
+                <p style={{ fontSize:12, fontWeight:500, color:"#888", margin:"4px 0 0", lineHeight:1.3 }}>
+                  {searchResult.country}
+                </p>
+              </div>
+            </div>
+          )}
 
           <p className="field-label">Quantity</p>
           <div className="input-row" style={{ marginBottom:6 }}>
@@ -275,15 +445,22 @@ export default function SellerPage() {
             />
             <img src={ICON_MY_COIN} alt="coin" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}/>
           </div>
-          <p style={{ textAlign:"right", fontSize:13, color:"#aaa", marginBottom:16 }}>0 USD</p>
+          <p style={{ textAlign:"right", fontSize:13, color:"#aaa", marginBottom:16 }}>{calculateUSD()} USD</p>
 
-          <button className="send-btn">
+          {sendError && <p style={{ fontSize:13, color:"#e53935", marginBottom:12, textAlign:"center" }}>{sendError}</p>}
+          {sendSuccess && <p style={{ fontSize:13, color:"#2e7d32", marginBottom:12, textAlign:"center" }}>{sendSuccess}</p>}
+
+          <button 
+            className="send-btn"
+            onClick={handleSend}
+            disabled={sendLoading || searchLoading}
+          >
             <div className="send-dots"/>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ position:"relative", zIndex:1 }}>
               <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               <path d="M22 2L15 22 11 13 2 9l20-7z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
             </svg>
-            <span style={{ position:"relative", zIndex:1, letterSpacing:2 }}>SEND</span>
+            <span style={{ position:"relative", zIndex:1, letterSpacing:2 }}>{sendLoading ? "SENDING..." : "SEND"}</span>
           </button>
         </div>
 

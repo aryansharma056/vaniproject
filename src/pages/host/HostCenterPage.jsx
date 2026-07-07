@@ -4,6 +4,7 @@ import ICON_BALANCE   from "../../assets/Balance.webp";
 import ICON_MY_WORK   from "../../assets/my work.webp";
 import ICON_POLICY    from "../../assets/policy.webp";
 import PROFILE_BG     from "../../assets/hostcenter hero.webp";
+import { useNavigate } from "react-router-dom";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
@@ -176,6 +177,7 @@ const styles = `
 `;
 
 export default function HostCenter() {
+   const navigate = useNavigate();
   return (
     <>
       <style>{styles}</style>
@@ -240,17 +242,17 @@ export default function HostCenter() {
         {/* ── 2-col Grid ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, margin:"0 16px" }}>
 
-          {/* Balance */}
-          <div className="grid-card">
-            <img src={ICON_BALANCE} alt="Balance" className="grid-card-icon"/>
-            <div className="grid-card-footer">
-              <span className="grid-card-label">Balance</span>
-              <span className="arrow">›</span>
-            </div>
-          </div>
+         {/* Balance */}
+<div className="grid-card" onClick={() => navigate("/host/balance")}>
+  <img src={ICON_BALANCE} alt="Balance" className="grid-card-icon"/>
+  <div className="grid-card-footer">
+    <span className="grid-card-label">Balance</span>
+    <span className="arrow">›</span>
+  </div>
+</div>
 
           {/* My Work */}
-          <div className="grid-card">
+          <div className="grid-card" onClick={() => navigate("/host/dashboard/mywork")}>
             <img src={ICON_MY_WORK} alt="My Work" className="grid-card-icon"/>
             <div className="grid-card-footer">
               <span className="grid-card-label">My Work</span>

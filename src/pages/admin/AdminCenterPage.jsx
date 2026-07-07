@@ -1,14 +1,14 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import AVATAR_IMG     from "../../assets/ht heaven place.webp";
-import ICON_BALANCE   from "../../assets/Balance.webp";
-import ICON_MEMBERS   from "../../assets/menber list.webp";
-import ICON_AGENT     from "../../assets/agent list.webp";
+import AVATAR_IMG from "../../assets/ht heaven place.webp";
+import ICON_BALANCE from "../../assets/Balance.webp";
+import ICON_MEMBERS from "../../assets/menber list.webp";
+import ICON_AGENT from "../../assets/agent list.webp";
 import ICON_INV_AGENT from "../../assets/invite agent.webp";
-import ICON_INV_BD    from "../../assets/invite BD.webp";
-import PROFILE_BG     from "../../assets/admin center 2.webp";
+import ICON_INV_BD from "../../assets/invite BD.webp";
+import PROFILE_BG from "../../assets/admin center 2.webp";
 import HOST_HEADER_BG from "../../assets/host_header_bg.webp";
-
+import api from "../../services/api";
 /*
   The only CSS we cannot express in Tailwind and must keep in a <style> tag:
     1. @import for Google Fonts (Tailwind has no font-import utility)
@@ -55,8 +55,18 @@ const minimalStyles = `
 
 /* ─── helpers ─────────────────────────────────────────── */
 const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 function lastDayOf(year, month) {
@@ -68,23 +78,35 @@ function buildMonthOptions(refYear, refMonth) {
   for (let delta = -6; delta <= 6; delta++) {
     let m = refMonth + delta;
     let y = refYear;
-    while (m < 1)  { m += 12; y--; }
-    while (m > 12) { m -= 12; y++; }
+    while (m < 1) {
+      m += 12;
+      y--;
+    }
+    while (m > 12) {
+      m -= 12;
+      y++;
+    }
     options.push({ year: y, month: m });
   }
   return options;
 }
 
 /* ─── static bar data ────────────────────────────────── */
-const BARS_FIRST_HALF  = [4,5,4,7,5,4,9,6,8,5,10,14,10,18,22];
-const BARS_SECOND_HALF = [4,6,4,9,5,4,12,7,8,10,14,6,18,10,22];
+const BARS_FIRST_HALF = [4, 5, 4, 7, 5, 4, 9, 6, 8, 5, 10, 14, 10, 18, 22];
+const BARS_SECOND_HALF = [4, 6, 4, 9, 5, 4, 12, 7, 8, 10, 14, 6, 18, 10, 22];
 
 /* ─── StatCard ───────────────────────────────────────── */
-function StatCard({ label, bars, accentColor, accentHighlight, iconBg, iconShadow }) {
+function StatCard({
+  label,
+  bars,
+  accentColor,
+  accentHighlight,
+  iconBg,
+  iconShadow,
+}) {
   return (
     /* ac-card → white bg, rounded-[18px], border border-black/5, shadow */
     <div className="bg-white rounded-[18px] border border-black/5 shadow-[0_2px_14px_rgba(100,120,200,0.08)] p-3.5 overflow-hidden">
-
       {/* icon + amount row */}
       <div className="flex items-center gap-2.5 mb-2.5">
         <div
@@ -94,7 +116,9 @@ function StatCard({ label, bars, accentColor, accentHighlight, iconBg, iconShado
           $
         </div>
         <div>
-          <p className="text-[22px] font-extrabold m-0 leading-none text-[#1a1a2e]">$0</p>
+          <p className="text-[22px] font-extrabold m-0 leading-none text-[#1a1a2e]">
+            $0
+          </p>
           <p className="text-[11px] text-gray-400 mt-0.5 mb-0">{label}</p>
         </div>
       </div>
@@ -127,28 +151,29 @@ function StatCard({ label, bars, accentColor, accentHighlight, iconBg, iconShado
 function MonthFilter({ selectedYear, selectedMonth, onChange }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
-  const now     = new Date();
+  const now = new Date();
   const options = buildMonthOptions(now.getFullYear(), now.getMonth() + 1);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const label          = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
-  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+  const label = `${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`;
+  const isCurrentMonth =
+    selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
 
   return (
     /* position:relative + alignSelf:flex-start */
     <div ref={wrapRef} className="relative self-start">
-
       {/* month-filter-btn */}
       <button
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-[7px] bg-white border-[1.5px] border-[rgba(68,102,255,0.18)]
                    rounded-3xl py-[7px] pr-[14px] pl-[12px] cursor-pointer font-[Nunito]
                    text-sm font-bold text-[#1a1a2e] shadow-[0_2px_10px_rgba(68,102,255,0.09)]
@@ -184,28 +209,38 @@ function MonthFilter({ selectedYear, selectedMonth, onChange }) {
                      w-[220px] overflow-hidden z-[100]"
         >
           {/* month-picker-header */}
-          <div className="px-3.5 pt-3 pb-2 text-[11px] font-extrabold tracking-[0.08em]
-                          text-gray-400 uppercase border-b border-[#f0f0f8]">
+          <div
+            className="px-3.5 pt-3 pb-2 text-[11px] font-extrabold tracking-[0.08em]
+                          text-gray-400 uppercase border-b border-[#f0f0f8]"
+          >
             Select Month
           </div>
 
           {/* month-picker-list */}
           <div className="picker-scroll max-h-[260px] overflow-y-auto py-1.5">
             {options.map(({ year, month }) => {
-              const isSelected = year === selectedYear && month === selectedMonth;
-              const isCurrent  = year === now.getFullYear() && month === now.getMonth() + 1;
+              const isSelected =
+                year === selectedYear && month === selectedMonth;
+              const isCurrent =
+                year === now.getFullYear() && month === now.getMonth() + 1;
               return (
                 <div
                   key={`${year}-${month}`}
-                  onClick={() => { onChange(year, month); setOpen(false); }}
+                  onClick={() => {
+                    onChange(year, month);
+                    setOpen(false);
+                  }}
                   className={`flex items-center justify-between px-4 py-2.5 cursor-pointer
                               text-sm font-bold transition-colors duration-[120ms]
-                              ${isSelected
-                                ? "bg-gradient-to-r from-[#f0f2ff] to-[#e8edff] text-[#3355dd]"
-                                : "text-[#1a1a2e] hover:bg-[#f2f4ff]"
+                              ${
+                                isSelected
+                                  ? "bg-gradient-to-r from-[#f0f2ff] to-[#e8edff] text-[#3355dd]"
+                                  : "text-[#1a1a2e] hover:bg-[#f2f4ff]"
                               }`}
                 >
-                  <span>{MONTH_NAMES[month - 1]} {year}</span>
+                  <span>
+                    {MONTH_NAMES[month - 1]} {year}
+                  </span>
                   <span className="flex items-center gap-1.5">
                     {/* today-dot */}
                     {isCurrent && (
@@ -229,8 +264,35 @@ function MonthFilter({ selectedYear, selectedMonth, onChange }) {
 /* ─── AdminCenter (main) ─────────────────────────────── */
 export default function AdminCenter() {
   const navigate = useNavigate();
-  const now      = new Date();
-  const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
+  const now = new Date();
+
+  const [adminDetails, setAdminDetails] = useState(null);
+
+  const fetchAdminDetails = useCallback(async () => {
+    try {
+     const result =
+  await api.get(
+    "/admin-center/admin-details"
+  );
+
+      console.log(result);
+
+      console.log(result);
+
+      if (result?.status) {
+        setAdminDetails(result.data);
+      }
+    } catch (error) {
+      console.error("Admin fetch error:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAdminDetails();
+  }, [fetchAdminDetails]);
+
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 
   const endDay = lastDayOf(selectedYear, selectedMonth);
@@ -243,7 +305,6 @@ export default function AdminCenter() {
 
       {/* ac-root — font-[Nunito] min-h-screen overflow-hidden bg-[#eef0f8] */}
       <div className="font-[Nunito] min-h-screen overflow-hidden bg-[#eef0f8]">
-
         {/* ── ZONE 1: Header (background image) ── */}
         <div
           className="bg-cover bg-center px-3.5 pt-3.5 pb-[22px]"
@@ -251,9 +312,14 @@ export default function AdminCenter() {
         >
           <div className="flex items-center justify-between relative z-[2]">
             {/* btn-nav */}
-            <button className="bg-white/[0.08] border border-white/[0.12] text-white
+            <button
+  onClick={() =>
+    navigate(-1)
+  }
+  className="bg-white/[0.08] border border-white/[0.12] text-white
                                w-9 h-9 rounded-[10px] cursor-pointer text-xl
-                               flex items-center justify-center shrink-0">
+                               flex items-center justify-center shrink-0"
+            >
               ‹
             </button>
 
@@ -261,9 +327,11 @@ export default function AdminCenter() {
               Admin Center
             </h1>
 
-            <button className="bg-white/[0.08] border border-white/[0.12] text-white
+            <button
+              className="bg-white/[0.08] border border-white/[0.12] text-white
                                w-9 h-9 rounded-[10px] cursor-pointer text-xl
-                               flex items-center justify-center shrink-0">
+                               flex items-center justify-center shrink-0"
+            >
               ✕
             </button>
           </div>
@@ -272,7 +340,6 @@ export default function AdminCenter() {
         {/* ── ZONE 2: Profile card (dark gradient bg) ── */}
         {/* zone-bottom → background gradient */}
         <div className="bg-gradient-to-b from-[#141a48] to-[#0f1540]">
-
           {/* profile-card */}
           <div
             className="bg-cover bg-center rounded-2xl p-[14px_16px]
@@ -286,19 +353,21 @@ export default function AdminCenter() {
 
             {/* avatar + name */}
             <div className="flex items-center gap-3 relative z-[1]">
-
               {/* avatar-ring — conic-gradient + animation, both need inline style / CSS class */}
               <div
                 className="avatar-ring-anim w-[66px] h-[66px] rounded-full shrink-0 p-[2.5px]"
                 style={{
-                  background: "conic-gradient(from 180deg,#a855f7,#3b82f6,#06b6d4,#3b82f6,#a855f7)",
+                  background:
+                    "conic-gradient(from 180deg,#a855f7,#3b82f6,#06b6d4,#3b82f6,#a855f7)",
                 }}
               >
                 {/* avatar-inner */}
-                <div className="w-full h-full rounded-full bg-[#1a1a3e] overflow-hidden
-                                flex items-center justify-center border-2 border-[#06091a]">
+                <div
+                  className="w-full h-full rounded-full bg-[#1a1a3e] overflow-hidden
+                                flex items-center justify-center border-2 border-[#06091a]"
+                >
                   <img
-                    src={AVATAR_IMG}
+                    src={adminDetails?.image || AVATAR_IMG}
                     alt="avatar"
                     className="w-full h-full object-cover rounded-full"
                   />
@@ -306,8 +375,12 @@ export default function AdminCenter() {
               </div>
 
               <div>
-                <p className="font-extrabold text-base mb-1 mt-0 text-white">HT = Heaven place</p>
-                <p className="text-[13px] text-white/60 m-0">ID: 1</p>
+                <p className="font-extrabold text-base mb-1 mt-0 text-white">
+                  {adminDetails?.name || "HT = Heaven place"}
+                </p>
+                <p className="text-[13px] text-white/60 m-0">
+                  ID: {adminDetails?.uid || 1}
+                </p>
               </div>
             </div>
 
@@ -316,7 +389,9 @@ export default function AdminCenter() {
               className="relative z-[1] flex items-center gap-[5px] whitespace-nowrap shrink-0
                          text-[#5c2d00] font-extrabold text-xs px-[13px] py-[7px] rounded-3xl
                          shadow-[0_2px_12px_rgba(247,151,30,0.5)]"
-              style={{ background: "linear-gradient(135deg,#f7971e 0%,#ffcc00 100%)" }}
+              style={{
+                background: "linear-gradient(135deg,#f7971e 0%,#ffcc00 100%)",
+              }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="#5c2d00">
                 <path d="M2 19l2-8 4 4 4-8 4 8 4-4 2 8H2z" />
@@ -329,12 +404,14 @@ export default function AdminCenter() {
         {/* ── WHITE MAIN CONTENT ── */}
         {/* main-content → bg-[#eef0f8] p-4 pb-8 flex flex-col gap-3 */}
         <div className="bg-[#eef0f8] px-4 pt-4 pb-8 flex flex-col gap-3">
-
           {/* Month Filter */}
           <MonthFilter
             selectedYear={selectedYear}
             selectedMonth={selectedMonth}
-            onChange={(y, m) => { setSelectedYear(y); setSelectedMonth(m); }}
+            onChange={(y, m) => {
+              setSelectedYear(y);
+              setSelectedMonth(m);
+            }}
           />
 
           {/* Stats row — 2-col grid */}
@@ -359,31 +436,35 @@ export default function AdminCenter() {
 
           {/* Balance — full-width action card */}
           {/* action-card */}
-          <div className="bg-white rounded-2xl border border-black/5
+          <div
+            className="bg-white rounded-2xl border border-black/5
                           shadow-[0_2px_10px_rgba(100,120,200,0.07)]
                           flex items-center justify-between px-[18px] py-4
                           cursor-pointer transition-colors duration-150 min-w-0
                           hover:bg-[#f5f6ff]"
-           onClick = {() => navigate("/wallet")}               
-                          >
+            onClick={() => navigate("/wallet")}
+          >
             <div className="flex items-center gap-3.5">
               <img
                 src={ICON_BALANCE}
                 alt="Balance"
                 className="w-[52px] h-[52px] rounded-[14px] object-cover shrink-0"
               />
-              <span className="text-base font-bold text-[#1a1a2e]">Balance</span>
+              <span className="text-base font-bold text-[#1a1a2e]">
+                Balance
+              </span>
             </div>
             {/* arrow-btn */}
-            <div className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
-                            flex items-center justify-center text-[22px] text-gray-400 shrink-0">
+            <div
+              className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
+                            flex items-center justify-center text-[22px] text-gray-400 shrink-0"
+            >
               ›
             </div>
           </div>
 
           {/* 2×2 Action Grid */}
           <div className="grid grid-cols-2 gap-2.5">
-
             {/* BD List */}
             {/* action-card-grid */}
             <div
@@ -395,14 +476,21 @@ export default function AdminCenter() {
               onClick={() => navigate("/team")}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                <img src={ICON_MEMBERS} alt="BD List"
-                     className="w-11 h-11 rounded-[12px] object-cover shrink-0" />
+                <img
+                  src={ICON_MEMBERS}
+                  alt="BD List"
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0"
+                />
                 <span className="text-[13px] font-bold text-[#1a1a2e] leading-[1.35] min-w-0 break-words">
-                  BD<br />List
+                  BD
+                  <br />
+                  List
                 </span>
               </div>
-              <div className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
-                              flex items-center justify-center text-[22px] text-gray-400 shrink-0">
+              <div
+                className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
+                              flex items-center justify-center text-[22px] text-gray-400 shrink-0"
+              >
                 ›
               </div>
             </div>
@@ -414,17 +502,29 @@ export default function AdminCenter() {
                          flex items-center justify-between p-2.5 gap-1
                          cursor-pointer transition-colors duration-150 min-w-0 overflow-hidden
                          hover:bg-[#f5f6ff]"
-              onClick={() => navigate("/agent")}
+             
+               onClick={() =>
+  navigate(
+    "/agent/normal"
+  )
+}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                <img src={ICON_AGENT} alt="Agent List"
-                     className="w-11 h-11 rounded-[12px] object-cover shrink-0" />
+                <img
+                  src={ICON_AGENT}
+                  alt="Agent List"
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0"
+                />
                 <span className="text-[13px] font-bold text-[#1a1a2e] leading-[1.35] min-w-0 break-words">
-                  Agent<br />List
+                  Agent
+                  <br />
+                  List
                 </span>
               </div>
-              <div className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
-                              flex items-center justify-center text-[22px] text-gray-400 shrink-0">
+              <div
+                className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
+                              flex items-center justify-center text-[22px] text-gray-400 shrink-0"
+              >
                 ›
               </div>
             </div>
@@ -436,17 +536,28 @@ export default function AdminCenter() {
                          flex items-center justify-between p-2.5 gap-1
                          cursor-pointer transition-colors duration-150 min-w-0 overflow-hidden
                          hover:bg-[#f5f6ff]"
-              onClick={() => navigate("/invite")}
+              onClick={() =>
+               navigate(
+  "/invite/agent"
+)
+              }
             >
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                <img src={ICON_INV_AGENT} alt="Invite Agent"
-                     className="w-11 h-11 rounded-[12px] object-cover shrink-0" />
+                <img
+                  src={ICON_INV_AGENT}
+                  alt="Invite Agent"
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0"
+                />
                 <span className="text-[13px] font-bold text-[#1a1a2e] leading-[1.35] min-w-0 break-words">
-                  Invite<br />Agent
+                  Invite
+                  <br />
+                  Agent
                 </span>
               </div>
-              <div className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
-                              flex items-center justify-center text-[22px] text-gray-400 shrink-0">
+              <div
+                className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
+                              flex items-center justify-center text-[22px] text-gray-400 shrink-0"
+              >
                 ›
               </div>
             </div>
@@ -458,24 +569,37 @@ export default function AdminCenter() {
                          flex items-center justify-between p-2.5 gap-1
                          cursor-pointer transition-colors duration-150 min-w-0 overflow-hidden
                          hover:bg-[#f5f6ff]"
-              onClick={() => navigate("/invite")}
+              onClick={() =>
+               navigate(
+  "/invite/bd"
+)
+              }
             >
               <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-                <img src={ICON_INV_BD} alt="Invite BD"
-                     className="w-11 h-11 rounded-[12px] object-cover shrink-0" />
+                <img
+                  src={ICON_INV_BD}
+                  alt="Invite BD"
+                  className="w-11 h-11 rounded-[12px] object-cover shrink-0"
+                />
                 <span className="text-[13px] font-bold text-[#1a1a2e] leading-[1.35] min-w-0 break-words">
-                  Invite<br />BD
+                  Invite
+                  <br />
+                  BD
                 </span>
               </div>
-              <div className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
-                              flex items-center justify-center text-[22px] text-gray-400 shrink-0">
+              <div
+                className="w-8 h-[30px] rounded-full bg-[#eef0f8] border border-black/[0.07]
+                              flex items-center justify-center text-[22px] text-gray-400 shrink-0"
+              >
                 ›
               </div>
             </div>
-
-          </div>{/* end 2×2 grid */}
-        </div>{/* end main-content */}
-      </div>{/* end ac-root */}
+          </div>
+          {/* end 2×2 grid */}
+        </div>
+        {/* end main-content */}
+      </div>
+      {/* end ac-root */}
     </>
   );
 }

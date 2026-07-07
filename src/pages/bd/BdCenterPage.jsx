@@ -1,8 +1,17 @@
-import { useState } from "react";
+import {
+  useState,
+  useEffect,
+} from "react";
 
-import eqBg         from "../../assets/bd center.webp";
-import profileBg    from "../../assets/admin center 2.webp";
-import balanceImg   from "../../assets/Balance.webp";
+import { useNavigate }
+from "react-router-dom";
+
+import api from "../../services/api";
+import AVATAR_IMG from "../../assets/ht heaven place.webp";
+
+import eqBg from "../../assets/bd center.webp";
+import profileBg from "../../assets/admin center 2.webp";
+import balanceImg from "../../assets/Balance.webp";
 import agentListImg from "../../assets/agent list.webp";
 import inviteAgentImg from "../../assets/invite agent.webp";
 
@@ -171,18 +180,42 @@ const styles = `
 `;
 
 export default function BdCenterPage() {
+  const navigate =
+  useNavigate();
+  const [bdDetails, setBdDetails] = useState(null);
+  useEffect(() => {
+    const fetchBDDetails = async () => {
+      try {
+        const result = await api.get("/bd/bd-details");
+
+        console.log(result);
+
+        if (result?.status) {
+          setBdDetails(result.data);
+        }
+      } catch (error) {
+        console.error("BD details error:", error);
+      }
+    };
+
+    fetchBDDetails();
+  }, []);
   return (
     <>
       <style>{styles}</style>
       <div className="ac-root">
-
         {/* ── ZONE 1: EQ image header ── */}
         <div className="zone-top" style={{ minHeight: 80 }}>
           <img src={eqBg} className="eq-bg-img" alt="" />
-          <div style={{
-            display:"flex", alignItems:"center", justifyContent:"space-between",
-            position:"relative", zIndex:2,
-          }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              position: "relative",
+              zIndex: 2,
+            }}
+          >
             <button className="btn-nav">&#8249;</button>
             <button className="btn-nav">&#10005;</button>
           </div>
@@ -194,35 +227,58 @@ export default function BdCenterPage() {
             <img src={profileBg} className="profile-card-bg" alt="" />
 
             {/* Avatar + info */}
-            <div style={{
-              display:"flex", alignItems:"center", gap:12,
-              position:"relative", zIndex:1,
-              flex:1, minWidth:0,   /* allows info block to compress */
-            }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                position: "relative",
+                zIndex: 1,
+                flex: 1,
+                minWidth: 0 /* allows info block to compress */,
+              }}
+            >
               <div className="avatar-ring">
                 <div className="avatar-inner">
-                  <svg viewBox="0 0 56 56" width="61" height="61" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="28" cy="28" r="28" fill="#12123a"/>
-                    <ellipse cx="21" cy="25" rx="7" ry="10" fill="#e8d5b0"/>
-                    <ellipse cx="35" cy="25" rx="7" ry="10" fill="#c0392b" opacity="0.85"/>
-                    <circle cx="28" cy="20" r="9" fill="#d4a76a"/>
-                    <rect x="19" y="27" width="18" height="15" rx="4" fill="#d4a76a"/>
-                    <path d="M19 29 Q28 39 37 29" fill="none" stroke="#7a5030" strokeWidth="1.5"/>
-                    <circle cx="24" cy="19" r="1.8" fill="#333"/>
-                    <circle cx="32" cy="19" r="1.8" fill="#333"/>
-                    <path d="M18 18 Q19 10 28 9 Q37 10 38 18 Q36 14 28 14 Q20 14 18 18Z" fill="#2a1a0a"/>
-                    <path d="M35 14 Q40 12 40 22" fill="none" stroke="#c0392b" strokeWidth="3" strokeLinecap="round"/>
-                  </svg>
+                  <img
+                    src={bdDetails?.image || AVATAR_IMG}
+                    alt="profile"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                    onError={(e) => {
+                      e.target.src = AVATAR_IMG;
+                    }}
+                  />
                 </div>
               </div>
 
               {/* text — min-width:0 lets it yield space */}
-              <div style={{minWidth:0}}>
-                <p style={{
-                  fontWeight:800, fontSize:16, margin:"0 0 4px", color:"#fff",
-                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-                }}>BD Center</p>
-                <p style={{fontSize:13, color:"rgba(255,255,255,0.6)", margin:0}}>ID: 1</p>
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    fontWeight: 800,
+                    fontSize: 16,
+                    margin: "0 0 4px",
+                    color: "#fff",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {bdDetails?.name || "BD Center"}
+                </p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.6)",
+                    margin: 0,
+                  }}
+                >
+                  ID: {bdDetails?.uid || "-"}
+                </p>
               </div>
             </div>
           </div>
@@ -230,102 +286,258 @@ export default function BdCenterPage() {
 
         {/* ── WHITE MAIN CONTENT ── */}
         <div className="main-content">
-
           {/* Stats Row */}
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12}}>
-
-            <div className="ac-card" style={{padding:14, overflow:"hidden"}}>
-              <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:10}}>
-                <div style={{
-                  width:40, height:40, borderRadius:"50%", flexShrink:0,
-                  background:"linear-gradient(135deg,#4466ff,#2244cc)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:18, color:"#fff", fontWeight:800,
-                  boxShadow:"0 4px 12px rgba(68,102,255,0.35)",
-                }}>$</div>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+          >
+            <div
+              className="ac-card"
+              style={{ padding: 14, overflow: "hidden" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 10,
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: "linear-gradient(135deg,#4466ff,#2244cc)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    color: "#fff",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 12px rgba(68,102,255,0.35)",
+                  }}
+                >
+                  $
+                </div>
                 <div>
-                  <p style={{fontSize:22, fontWeight:800, margin:0, lineHeight:1, color:"#1a1a2e"}}>$0</p>
-                  <p style={{fontSize:11, color:"#999", margin:"2px 0 0"}}>This month</p>
+                  <p
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      margin: 0,
+                      lineHeight: 1,
+                      color: "#1a1a2e",
+                    }}
+                  >
+                    $0
+                  </p>
+                  <p style={{ fontSize: 11, color: "#999", margin: "2px 0 0" }}>
+                    This month
+                  </p>
                 </div>
               </div>
-              <div style={{display:"flex", alignItems:"flex-end", height:32, gap:2}}>
-                {[4,5,4,7,5,4,9,6,8,5,10,14,10,18,22,28,18,32,20].map((h,i)=>(
-                  <div key={i} className="stat-bar" style={{
-                    width:5, height:h,
-                    background: h>=30 ? "#7ab5ff" : `rgba(100,160,255,${0.25+h*0.022})`,
-                  }}/>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  height: 32,
+                  gap: 2,
+                }}
+              >
+                {[
+                  4, 5, 4, 7, 5, 4, 9, 6, 8, 5, 10, 14, 10, 18, 22, 28, 18, 32,
+                  20,
+                ].map((h, i) => (
+                  <div
+                    key={i}
+                    className="stat-bar"
+                    style={{
+                      width: 5,
+                      height: h,
+                      background:
+                        h >= 30
+                          ? "#7ab5ff"
+                          : `rgba(100,160,255,${0.25 + h * 0.022})`,
+                    }}
+                  />
                 ))}
               </div>
             </div>
 
-            <div className="ac-card" style={{padding:14, overflow:"hidden"}}>
-              <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:10}}>
-                <div style={{
-                  width:40, height:40, borderRadius:"50%", flexShrink:0,
-                  background:"linear-gradient(135deg,#22dd88,#1aaa66)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize:18, color:"#fff", fontWeight:800,
-                  boxShadow:"0 4px 12px rgba(34,200,130,0.35)",
-                }}>$</div>
+            <div
+              className="ac-card"
+              style={{ padding: 14, overflow: "hidden" }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 10,
+                }}
+              >
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: "linear-gradient(135deg,#22dd88,#1aaa66)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    color: "#fff",
+                    fontWeight: 800,
+                    boxShadow: "0 4px 12px rgba(34,200,130,0.35)",
+                  }}
+                >
+                  $
+                </div>
                 <div>
-                  <p style={{fontSize:22, fontWeight:800, margin:0, lineHeight:1, color:"#1a1a2e"}}>$0</p>
-                  <p style={{fontSize:11, color:"#999", margin:"2px 0 0"}}>Last month</p>
+                  <p
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      margin: 0,
+                      lineHeight: 1,
+                      color: "#1a1a2e",
+                    }}
+                  >
+                    $0
+                  </p>
+                  <p style={{ fontSize: 11, color: "#999", margin: "2px 0 0" }}>
+                    Last month
+                  </p>
                 </div>
               </div>
-              <div style={{display:"flex", alignItems:"flex-end", height:32, gap:2}}>
-                {[4,6,4,9,5,4,12,7,8,10,14,6,18,10,22,28,14,32,18].map((h,i)=>(
-                  <div key={i} className="stat-bar" style={{
-                    width:5, height:h,
-                    background: h>=30 ? "#5ee8bb" : `rgba(60,200,140,${0.22+h*0.022})`,
-                  }}/>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  height: 32,
+                  gap: 2,
+                }}
+              >
+                {[
+                  4, 6, 4, 9, 5, 4, 12, 7, 8, 10, 14, 6, 18, 10, 22, 28, 14, 32,
+                  18,
+                ].map((h, i) => (
+                  <div
+                    key={i}
+                    className="stat-bar"
+                    style={{
+                      width: 5,
+                      height: h,
+                      background:
+                        h >= 30
+                          ? "#5ee8bb"
+                          : `rgba(60,200,140,${0.22 + h * 0.022})`,
+                    }}
+                  />
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* Balance — full width */}
-          <div className="action-card" style={{padding:"16px 18px"}}>
-            <div style={{display:"flex", alignItems:"center", gap:14}}>
-              <div style={{
-                width:52, height:52, borderRadius:14, flexShrink:0,
-                overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center",
-              }}>
-                <img src={balanceImg} alt="Balance" style={{width:"100%", height:"100%", objectFit:"contain"}}/>
+          <div className="action-card" style={{ padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 14,
+                  flexShrink: 0,
+                  overflow: "hidden",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={balanceImg}
+                  alt="Balance"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
               </div>
-              <span style={{fontSize:16, fontWeight:700, color:"#1a1a2e"}}>Balance</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#1a1a2e" }}>
+                Balance
+              </span>
             </div>
             <div className="arrow-btn">›</div>
           </div>
 
           {/* 2-col grid */}
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}
+          >
             {/* Agent List */}
-            <div className="action-card-grid">
+            <div
+  className="action-card-grid"
+  onClick={() =>
+   navigate(
+  "/agent/bd-center"
+)
+  }
+>
               <div className="grid-card-left">
                 <div className="grid-icon-box">
-                  <img src={agentListImg} alt="Agent List" style={{width:"100%", height:"100%", objectFit:"contain"}}/>
+                  <img
+                    src={agentListImg}
+                    alt="Agent List"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
                 </div>
-                <span className="grid-label">Agent<br/>List</span>
+                <span className="grid-label">
+                  Agent
+                  <br />
+                  List
+                </span>
               </div>
               <div className="arrow-btn">›</div>
             </div>
 
             {/* Invite Agent */}
-            <div className="action-card-grid">
+            <div
+  className="action-card-grid"
+  onClick={() =>
+   navigate(
+  "/invite/bd-center"
+)
+  }
+>
               <div className="grid-card-left">
                 <div className="grid-icon-box">
-                  <img src={inviteAgentImg} alt="Invite Agent" style={{width:"100%", height:"100%", objectFit:"contain"}}/>
+                  <img
+                    src={inviteAgentImg}
+                    alt="Invite Agent"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
                 </div>
-                <span className="grid-label">Invite<br/>Agent</span>
+                <span className="grid-label">
+                  Invite
+                  <br />
+                  Agent
+                </span>
               </div>
               <div className="arrow-btn">›</div>
             </div>
-
           </div>
         </div>
-
       </div>
     </>
   );

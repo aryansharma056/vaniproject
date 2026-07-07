@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 import ICON_MY_COIN  from "../../assets/my coin.webp";
 import ICON_MERCHANT from "../../assets/merchant.webp";
 import ICON_BALANCE  from "../../assets/Balance.webp";
@@ -168,30 +170,223 @@ function CrossSpark({ top, left, size, d, delay }) {
   );
 }
 
-function FormContent() {
+function FormContent({ tab, merchantToUserRate, merchantToSellerRate, balance, setBalance }) {
   const [userId, setUserId]     = useState("");
   const [quantity, setQuantity] = useState("");
+  const [searchResult, setSearchResult] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [sendLoading, setSendLoading] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [sendSuccess, setSendSuccess] = useState("");
+
+  // Calculate USD based on selected tab and quantity
+  const calculateUSD = () => {
+    const qty = parseFloat(quantity) || 0;
+    const rate = tab === "user" ? merchantToUserRate : merchantToSellerRate;
+    const usd = qty / rate;
+    return usd.toFixed(2);
+  };
+
+  const handleSearchUser = async () => {
+    if (!userId.trim()) {
+      setSearchError(tab === "user" ? "Please enter a user ID" : "Please enter a seller ID");
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+      setSearchError("");
+      setSearchResult(null);
+      setSelectedUser(null);
+
+      const endpoint = tab === "user" 
+        ? `/merchant/search-user?uid=${userId.trim()}`
+        : `/merchant/search-seller?seller_uid=${userId.trim()}`;
+      
+      const result = await api.get(endpoint);
+      console.log("Search Result:", result);
+
+      if (result?.status && result?.data) {
+        setSearchResult(result.data);
+      } else {
+        // Handle error message
+        let errorMessage = tab === "user" ? "User not found" : "Seller not found";
+        if (result?.message) {
+          if (typeof result.message === 'string') {
+            errorMessage = result.message;
+          } else if (typeof result.message === 'object') {
+            const errorKeys = Object.keys(result.message);
+            if (errorKeys.length > 0) {
+              errorMessage = result.message[errorKeys[0]][0] || errorMessage;
+            }
+          }
+        }
+        setSearchError(errorMessage);
+      }
+    } catch (error) {
+      console.error("Search API error:", error);
+      let errorMessage = tab === "user" ? "Failed to search user. Please try again." : "Failed to search seller. Please try again.";
+      if (error.response?.data?.message) {
+        if (typeof error.response.data.message === 'string') {
+          errorMessage = error.response.data.message;
+        } else if (typeof error.response.data.message === 'object') {
+          const errorKeys = Object.keys(error.response.data.message);
+          if (errorKeys.length > 0) {
+            errorMessage = error.response.data.message[errorKeys[0]][0] || errorMessage;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setSearchError(errorMessage);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!selectedUser) {
+      setSendError(tab === "user" ? "Please select a user first" : "Please select a seller first");
+      return;
+    }
+
+    if (!quantity.trim() || parseFloat(quantity) <= 0) {
+      setSendError("Please enter a valid quantity");
+      return;
+    }
+
+    try {
+      setSendLoading(true);
+      setSendError("");
+      setSendSuccess("");
+
+      const endpoint = tab === "user" 
+        ? "/merchant/merchant-recharge-user"
+        : "/merchant/merchant-recharge-seller";
+      
+      const payload = {
+        [tab === "user" ? "user_uid" : "seller_uid"]: selectedUser.uid,
+        coin: parseFloat(quantity)
+      };
+
+      const result = await api.post(endpoint, payload);
+      console.log("Send Result:", result);
+
+      if (result?.status) {
+        setSendSuccess(result.message || "Coin transferred successfully");
+        // Update balance
+        const newBalance = balance - parseFloat(quantity);
+        setBalance(newBalance);
+        // Reset form
+        setQuantity("");
+        setSelectedUser(null);
+        setSearchResult(null);
+        setUserId("");
+      } else {
+        // Handle error message - could be string or object with field errors
+        let errorMessage = "Failed to transfer coins";
+        if (result?.message) {
+          if (typeof result.message === 'string') {
+            errorMessage = result.message;
+          } else if (typeof result.message === 'object') {
+            // Handle validation errors like {user_uid: ["The user uid field is required."]}
+            const errorKeys = Object.keys(result.message);
+            if (errorKeys.length > 0) {
+              errorMessage = result.message[errorKeys[0]][0] || errorMessage;
+            }
+          }
+        }
+        setSendError(errorMessage);
+      }
+    } catch (error) {
+      console.error("Send API error:", error);
+      // Handle error from axios interceptor or network error
+      let errorMessage = "Failed to transfer coins. Please try again.";
+      if (error.response?.data?.message) {
+        if (typeof error.response.data.message === 'string') {
+          errorMessage = error.response.data.message;
+        } else if (typeof error.response.data.message === 'object') {
+          const errorKeys = Object.keys(error.response.data.message);
+          if (errorKeys.length > 0) {
+            errorMessage = error.response.data.message[errorKeys[0]][0] || errorMessage;
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setSendError(errorMessage);
+    } finally {
+      setSendLoading(false);
+    }
+  };
+
   return (
     <>
-      <p className="field-label">User ID</p>
+      <p className="field-label">{tab === "user" ? "User ID" : "Seller ID"}</p>
       <div className="input-row" style={{ marginBottom:20 }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ flexShrink:0 }}>
           <circle cx="12" cy="8" r="4" stroke="#aaa" strokeWidth="1.8"/>
           <path d="M4 20c0-4 4-7 8-7s8 3 8 7" stroke="#aaa" strokeWidth="1.8" strokeLinecap="round"/>
         </svg>
         <input
-          placeholder="Please enter user ID"
+          placeholder={tab === "user" ? "Please enter user ID" : "Please enter seller ID"}
           value={userId}
-          onChange={e => setUserId(e.target.value)}
+          onChange={e => {
+            setUserId(e.target.value);
+            setSearchError("");
+          }}
+          disabled={searchLoading}
         />
-        <button className="search-btn">
+        <button 
+          className="search-btn" 
+          onClick={handleSearchUser}
+          disabled={searchLoading}
+        >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7" stroke="white" strokeWidth="2"/>
             <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           </svg>
-          Search
+          {searchLoading ? "..." : "Search"}
         </button>
       </div>
+      {searchError && <p style={{ fontSize:13, color:"#e53935", marginBottom:16 }}>{searchError}</p>}
+
+      {/* Search Result */}
+      {searchResult && (
+        <div 
+          style={{
+            display:"flex",
+            alignItems:"center",
+            gap:14,
+            padding:14,
+            marginBottom:20,
+            background:"#f5f5f5",
+            borderRadius:12,
+            border:selectedUser?.id === searchResult.id ? "2px solid #3b82f6" : "2px solid transparent",
+            cursor:"pointer"
+          }}
+          onClick={() => setSelectedUser(searchResult)}
+        >
+          <img
+            src={searchResult.image || "https://via.placeholder.com/48"}
+            alt={searchResult.name}
+            style={{ width:52, height:52, borderRadius:"50%", objectFit:"cover", flexShrink:0, border:"2px solid #e0e0e0" }}
+          />
+          <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            <p style={{ fontSize:16, fontWeight:700, color:"#1a1a2e", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", lineHeight:1.3 }}>
+              {searchResult.name}
+            </p>
+            <p style={{ fontSize:13, fontWeight:600, color:"#555", margin:"6px 0 0", lineHeight:1.3 }}>
+              UID: {searchResult.uid}
+            </p>
+            <p style={{ fontSize:12, fontWeight:500, color:"#888", margin:"4px 0 0", lineHeight:1.3 }}>
+              {searchResult.country}
+            </p>
+          </div>
+        </div>
+      )}
 
       <p className="field-label">Quantity</p>
       <div className="input-row" style={{ marginBottom:6 }}>
@@ -207,22 +402,83 @@ function FormContent() {
         />
         <img src={ICON_MY_COIN} alt="coin" style={{ width:34, height:34, borderRadius:"50%", objectFit:"cover", flexShrink:0 }}/>
       </div>
-      <p style={{ textAlign:"right", fontSize:13, color:"#aaa", marginBottom:16 }}>0 USD</p>
+      <p style={{ textAlign:"right", fontSize:13, color:"#aaa", marginBottom:16 }}>{calculateUSD()} USD</p>
 
-      <button className="send-btn">
+      {sendError && <p style={{ fontSize:13, color:"#e53935", marginBottom:12, textAlign:"center" }}>{sendError}</p>}
+      {sendSuccess && <p style={{ fontSize:13, color:"#2e7d32", marginBottom:12, textAlign:"center" }}>{sendSuccess}</p>}
+
+      <button 
+        className="send-btn"
+        onClick={handleSend}
+        disabled={sendLoading || searchLoading}
+      >
         <div className="send-dots"/>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ position:"relative", zIndex:1 }}>
           <path d="M22 2L11 13" stroke="white" strokeWidth="2" strokeLinecap="round"/>
           <path d="M22 2L15 22 11 13 2 9l20-7z" stroke="white" strokeWidth="2" strokeLinejoin="round"/>
         </svg>
-        <span style={{ position:"relative", zIndex:1, letterSpacing:2 }}>SEND</span>
+        <span style={{ position:"relative", zIndex:1, letterSpacing:2 }}>{sendLoading ? "SENDING..." : "SEND"}</span>
       </button>
     </>
   );
 }
 
 export default function SellerPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("user");
+  const [balance, setBalance] = useState(0);
+  const [merchantToUserRate, setMerchantToUserRate] = useState(8000);
+  const [merchantToSellerRate, setMerchantToSellerRate] = useState(9500);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMerchantDashboard = async () => {
+      try {
+        const result = await api.get("/merchant/merchant-dashboard");
+        console.log("Merchant Dashboard:", result);
+
+        if (result?.status && result?.data) {
+          setBalance(result.data.balance || 0);
+          setMerchantToUserRate(result.data.merchant_to_user_rate || 8000);
+          setMerchantToSellerRate(result.data.merchant_to_seller_rate || 9500);
+        } else {
+          // Handle error message
+          let errorMessage = "Failed to fetch dashboard data";
+          if (result?.message) {
+            if (typeof result.message === 'string') {
+              errorMessage = result.message;
+            } else if (typeof result.message === 'object') {
+              const errorKeys = Object.keys(result.message);
+              if (errorKeys.length > 0) {
+                errorMessage = result.message[errorKeys[0]][0] || errorMessage;
+              }
+            }
+          }
+          console.error("Dashboard error:", errorMessage);
+        }
+      } catch (error) {
+        console.error("Merchant dashboard API error:", error);
+        let errorMessage = "Failed to fetch dashboard data";
+        if (error.response?.data?.message) {
+          if (typeof error.response.data.message === 'string') {
+            errorMessage = error.response.data.message;
+          } else if (typeof error.response.data.message === 'object') {
+            const errorKeys = Object.keys(error.response.data.message);
+            if (errorKeys.length > 0) {
+              errorMessage = error.response.data.message[errorKeys[0]][0] || errorMessage;
+            }
+          }
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        console.error("Dashboard error:", errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMerchantDashboard();
+  }, []);
 
   return (
     <>
@@ -262,7 +518,7 @@ export default function SellerPage() {
             </p>
             <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9, flexWrap:"nowrap" }}>
               <img src={ICON_MY_COIN} alt="coin" className="coin-icon"/>
-              <span className="coin-amount">0.00</span>
+              <span className="coin-amount">{loading ? "..." : balance.toLocaleString()}</span>
             </div>
             <p style={{
               color:"rgba(255,255,255,0.65)", fontWeight:700, letterSpacing:"0.3px",
@@ -282,7 +538,7 @@ export default function SellerPage() {
           <div className="divider-v"/>
 
           {/* Right: History */}
-          <div className="hist-btn">
+          <div className="hist-btn" onClick={() => navigate("/merchant/history")}>
             <div className="hist-circle">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
                 <rect x="3.5" y="2.5" width="13" height="16" rx="2.5" stroke="white" strokeWidth="1.5"/>
@@ -326,7 +582,7 @@ export default function SellerPage() {
           </div>
 
           {/* Form fields — re-mount on tab change */}
-          <FormContent key={tab}/>
+          <FormContent key={tab} tab={tab} merchantToUserRate={merchantToUserRate} merchantToSellerRate={merchantToSellerRate} balance={balance} setBalance={setBalance}/>
         </div>
 
         {/* ── Balance Card ── */}

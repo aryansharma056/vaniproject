@@ -1,19 +1,12 @@
 import { ChevronLeft, Search } from "lucide-react";
 import { useState, useEffect } from "react";
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
-import api from "../../../services/api";
-import AVATAR_IMG from "../../../assets/ht heaven place.webp";
+import api from "../../services/api";
+import AVATAR_IMG from "../../assets/ht heaven place.webp";
 
-export default function FriendsList() {
+export default function AgencyInvite() {
   const navigate = useNavigate();
-const {
-  inviteType =
-    "agent",
-} = useParams();
 
   const [search, setSearch] = useState("");
 
@@ -58,37 +51,7 @@ const {
     try {
       setInviteLoading(true);
 
-     let endpoint =
-  "/admin-center/agent-invite";
-
-// Admin → Agent Invite
-if (
-  inviteType ===
-  "agent"
-) {
-  endpoint =
-    "/admin-center/agent-invite";
-}
-
-// Admin → BD Invite
-if (
-  inviteType ===
-  "bd"
-) {
-  endpoint =
-    "/admin-center/BD-invite";
-}
-
-// BD Center → Agent Invite
-if (
-  inviteType ===
-  "bd-center"
-) {
-  endpoint =
-    "/bd/invite-agent";
-}
-
-      const result = await api.post(endpoint, {
+      const result = await api.post("/agency/invite-host", {
         user_id: selectedFriend.id,
       });
 
@@ -137,14 +100,12 @@ if (
       <div className="w-full max-w-lg mx-auto px-4 py-5 sm:px-6 md:px-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-7">
-          <button onClick={() => navigate(-1)} className="p-1">
+          <button onClick={() => navigate("/agency")} className="p-1">
             <ChevronLeft size={24} className="cursor-pointer" />
           </button>
 
           <h1 className="text-lg sm:text-2xl font-semibold">
-            {inviteType === "bd"
-  ? "Invite BD"
-  : "Invite Agent"}
+            Invite Host
           </h1>
 
           <div className="w-6"></div>
@@ -253,11 +214,9 @@ if (
 
             {/* Text */}
             <p className="text-center text-gray-300 text-sm mt-5">
-              Do you want to send an{" "}
+              Do you want to send a{" "}
               <span className="font-semibold text-violet-300">
-                {inviteType === "bd"
-  ? "BD"
-  : "Agent"}
+                Host
               </span>{" "}
               invite to this friend?
             </p>
