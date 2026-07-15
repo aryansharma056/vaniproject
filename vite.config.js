@@ -17,7 +17,7 @@ export default defineConfig({
     historyApiFallback: true,
     proxy: {
       '/api': {
-        target: 'https://vanivoicechat.kotiboxglobaltech.online',
+        target: 'https://vanivoicechat.com',
         changeOrigin: true,
         secure: true,
       },

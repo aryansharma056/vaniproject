@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = "https://vanivoicechat.kotiboxglobaltech.online/api";
+const BASE_URL = "https://vanivoicechat.com/api";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -15,7 +15,13 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Get token from localStorage (injected by Flutter WebView)
-    const token = localStorage.getItem('token');
+    let token = localStorage.getItem('token');
+    
+    // Fallback token for testing/development when running on localhost
+    if (!token && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      token = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
+    }
+
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },

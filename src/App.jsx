@@ -29,6 +29,7 @@ import Transfer from "./pages/host/balance/Transfer";
 import TransferHistory from "./pages/host/balance/TransferHistory";
 import Withdraw from "./pages/host/balance/Withdraw";
 import WithdrawalHistory from "./pages/host/balance/WithdrawHistory";
+import HostPolicy from "./pages/host/hostPolicy";
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
       <Route path="/host/transfer/history" element={<TransferHistory />}/>
       <Route path="/host/withdraw" element={<Withdraw />}/>
       <Route path="/host/withdraw/history" element={<WithdrawalHistory />}/>
+      <Route path="/host/policy" element={<HostPolicy />}/>
 
       
       <Route path="*" element={<Navigate to="/svip/1" replace />} />

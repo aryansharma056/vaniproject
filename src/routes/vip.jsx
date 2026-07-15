@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import { useVIPData } from "../context/VIPContext";
 
-const BASE = "https://vanivoicechat.kotiboxglobaltech.online";
+const BASE = "https://vanivoicechat.com";
 const DEFAULT_USER  = `${BASE}/storage/defaul-user.png`;
 const DEFAULT_BADGE = `${BASE}/public/uploads/vip/1715428644.png`;
 

@@ -263,7 +263,7 @@ export default function HostCenter() {
         </div>
 
         {/* ── Policy (full width) ── */}
-        <div className="full-card">
+        <div className="full-card" onClick={() => navigate("/host/policy")}>
           <img src={ICON_POLICY} alt="Policy" className="full-card-icon"/>
           <span className="full-card-label">Policy</span>
           <span className="arrow">›</span>

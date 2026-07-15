@@ -1,39 +1,70 @@
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-// ─── Mock data (swap fetch() here when API is ready) ───────────────────────
-const WORK_DATA = [
-  {
-    id: 1,
-    period: "2026-06",
-    status: "Unsettled",
-    target: 0,
-    duration: "0s",
-    targetLV: 0,
-    salary: 0,
-    // Detail tab rows – replace with API response fields
-    dateRows: [],
-    durationRows: [],
-    targetRows: [],
-  },
-];
+import api from "../../../services/api";
 
 // ─── Detail Modal ───────────────────────────────────────────────────────────
-function DetailModal({ item, onClose }) {
+function DetailModal({ item, details, loading, error, onClose }) {
   const [activeTab, setActiveTab] = useState("Date");
 
   const tabs = ["Date", "Duration", "Target"];
 
+  if (loading) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-end justify-center"
+        style={{ backgroundColor: "rgba(80,80,80,0.6)" }}
+        onClick={onClose}
+      >
+        <div
+          className="w-full bg-white rounded-t-3xl px-5 pt-12 pb-16 shadow-2xl flex flex-col items-center justify-center"
+          style={{ maxWidth: 430, minHeight: 300 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+          <p className="text-sm text-gray-500 font-medium">Loading details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !details) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-end justify-center"
+        style={{ backgroundColor: "rgba(80,80,80,0.6)" }}
+        onClick={onClose}
+      >
+        <div
+          className="w-full bg-white rounded-t-3xl px-5 pt-6 pb-8 shadow-2xl text-center"
+          style={{ maxWidth: 430 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-center relative mb-5">
+            <span className="text-lg font-bold text-gray-900">Details</span>
+            <button onClick={onClose} className="absolute right-0 text-gray-400 text-xl">✕</button>
+          </div>
+          <p className="text-red-500 text-sm py-8">{error || "Failed to load details"}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Map API details list to tab-compatible rows
+  const apiDetails = details.details || [];
+  const dateRows = apiDetails.map((d) => ({ label: d.date, value: "Active" }));
+  const durationRows = []; // API does not currently return duration-level records
+  const targetRows = apiDetails.map((d) => ({
+    label: d.date,
+    value: Number(d.target).toLocaleString(),
+  }));
+
   const tabContent = {
-    Date: item.dateRows,
-    Duration: item.durationRows,
-    Target: item.targetRows,
+    Date: dateRows,
+    Duration: durationRows,
+    Target: targetRows,
   };
 
   const rows = tabContent[activeTab];
-  
- 
-
 
   return (
     // Backdrop
@@ -61,9 +92,11 @@ function DetailModal({ item, onClose }) {
 
         {/* Period + Badge */}
         <div className="flex items-center justify-between mb-4">
-          <span className="text-blue-500 text-lg font-bold">{item.period}</span>
+          <span className="text-blue-500 text-lg font-bold">
+            {details.month} (Cycle {details.cycle})
+          </span>
           <span className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-full">
-            {item.status}
+            {details.status_text}
           </span>
         </div>
 
@@ -72,21 +105,23 @@ function DetailModal({ item, onClose }) {
           <div className="flex items-center">
             <div className="flex items-center w-1/2">
               <span className="text-gray-500 text-sm font-medium">Target:</span>
-              <span className="text-blue-500 font-bold text-sm ml-2">{item.target}</span>
+              <span className="text-blue-500 font-bold text-sm ml-2">
+                {Number(details.target).toLocaleString()}
+              </span>
             </div>
             <div className="flex items-center w-1/2">
               <span className="text-gray-500 text-sm font-medium">Duration:</span>
-              <span className="text-gray-900 font-bold text-sm ml-2">{item.duration}</span>
+              <span className="text-gray-900 font-bold text-sm ml-2">0s</span>
             </div>
           </div>
           <div className="flex items-center">
             <div className="flex items-center w-1/2">
               <span className="text-gray-500 text-sm font-medium">Target LV:</span>
-              <span className="text-yellow-500 font-bold text-sm ml-2">{item.targetLV}</span>
+              <span className="text-yellow-500 font-bold text-sm ml-2">{details.target_level}</span>
             </div>
             <div className="flex items-center w-1/2">
               <span className="text-gray-500 text-sm font-medium">Salary:</span>
-              <span className="text-yellow-500 font-bold text-sm ml-2">${item.salary}</span>
+              <span className="text-yellow-500 font-bold text-sm ml-2">${details.salary}</span>
             </div>
           </div>
         </div>
@@ -126,7 +161,7 @@ function DetailModal({ item, onClose }) {
         </div>
 
         {/* Tab Content */}
-        <div className="mt-4 min-h-16">
+        <div className="mt-4 min-h-16 max-h-48 overflow-y-auto">
           {rows.length === 0 ? (
             <p className="text-center text-gray-400 text-sm py-6">No data available</p>
           ) : (
@@ -147,10 +182,12 @@ function DetailModal({ item, onClose }) {
 
 // ─── Work Card ──────────────────────────────────────────────────────────────
 function WorkCard({ item, onDetails }) {
+  const period = `${item.month} (${item.cycle})`;
+
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-blue-500 text-lg font-bold">{item.period}</span>
+        <span className="text-blue-500 text-lg font-bold">{period}</span>
         <span className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-full">
           {item.status}
         </span>
@@ -160,17 +197,19 @@ function WorkCard({ item, onDetails }) {
         <div className="flex items-center">
           <div className="flex items-center w-1/2">
             <span className="text-gray-400 text-sm">Target:</span>
-            <span className="text-blue-500 font-bold text-sm ml-2">{item.target}</span>
+            <span className="text-blue-500 font-bold text-sm ml-2">
+              {Number(item.target).toLocaleString()}
+            </span>
           </div>
           <div className="flex items-center w-1/2">
             <span className="text-gray-400 text-sm">Duration:</span>
-            <span className="text-gray-900 font-bold text-sm ml-2">{item.duration}</span>
+            <span className="text-gray-900 font-bold text-sm ml-2">0s</span>
           </div>
         </div>
         <div className="flex items-center">
           <div className="flex items-center w-1/2">
             <span className="text-gray-400 text-sm">Target LV:</span>
-            <span className="text-gray-900 font-bold text-sm ml-2">{item.targetLV}</span>
+            <span className="text-gray-900 font-bold text-sm ml-2">{item.target_level}</span>
           </div>
           <div className="flex items-center w-1/2">
             <span className="text-gray-400 text-sm">Salary:</span>
@@ -195,9 +234,59 @@ function WorkCard({ item, onDetails }) {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 export default function MyWorkPage() {
-  const [data] = useState(WORK_DATA);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [selectedItem, setSelectedItem] = useState(null);
+  const [detailsData, setDetailsData] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState(null);
+
   const navigate = useNavigate();
+
+  const fetchWorkData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get("/host/my-work");
+      if (res.status && Array.isArray(res.data)) {
+        setData(res.data);
+      } else {
+        setError(res.message || "Failed to fetch work data");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to fetch work data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenDetails = async (item) => {
+    setSelectedItem(item);
+    setDetailsData(null);
+    setDetailsLoading(true);
+    setDetailsError(null);
+    try {
+      const cycleParam = item.cycle === "01-15" ? 1 : 2;
+      const res = await api.get(
+        `/host/my-work-details?month=${item.month}&cycle=${cycleParam}`
+      );
+      if (res.status && res.data) {
+        setDetailsData(res.data);
+      } else {
+        setDetailsError(res.message || "Failed to load details");
+      }
+    } catch (err) {
+      setDetailsError(err.message || "Failed to load details");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkData();
+  }, []);
 
   return (
     <div
@@ -206,21 +295,56 @@ export default function MyWorkPage() {
     >
       {/* Header */}
       <div className="bg-white px-4 py-4 flex items-center relative shadow-sm">
-        <button className="text-gray-700 text-2xl font-light absolute left-4"
-        onClick={() => navigate(-1)}>&#8249;</button>
+        <button
+          className="text-gray-700 text-2xl font-light absolute left-4"
+          onClick={() => navigate(-1)}
+        >
+          &#8249;
+        </button>
         <h1 className="text-center text-lg font-bold text-gray-900 w-full">My Work</h1>
       </div>
 
       {/* Cards */}
       <div className="flex-1 p-4 space-y-3">
-        {data.map((item) => (
-          <WorkCard key={item.id} item={item} onDetails={setSelectedItem} />
-        ))}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-sm text-gray-500">Loading work data...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="text-center py-10 bg-white rounded-2xl p-5 shadow-sm">
+            <p className="text-red-500 text-sm mb-4">{error}</p>
+            <button
+              onClick={fetchWorkData}
+              className="px-4 py-2 bg-blue-500 text-white rounded-full text-sm font-medium hover:bg-blue-600 active:scale-95 transition-all"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && data.length === 0 && (
+          <p className="text-center text-gray-500 text-sm py-10">No work records found.</p>
+        )}
+
+        {!loading &&
+          !error &&
+          data.map((item, idx) => (
+            <WorkCard key={idx} item={item} onDetails={handleOpenDetails} />
+          ))}
       </div>
 
       {/* Modal */}
       {selectedItem && (
-        <DetailModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+        <DetailModal
+          item={selectedItem}
+          details={detailsData}
+          loading={detailsLoading}
+          error={detailsError}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
     </div>
   );
