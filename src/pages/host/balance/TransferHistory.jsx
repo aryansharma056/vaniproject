@@ -1,17 +1,43 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ── Mock data ─────────────────────────────────────────────────────────────
-const MOCK_RECORDS = [
-  {
-    id: 1,
-    type: "Transfer to Jai...",
-    uid: 0,
-    source: "System",
-    amount: -1.0,
-    date: "2026-06-18 08:23:27",
-  },
-];
+const BASE_URL = "https://vanivoicechat.com/api";
+// TODO: replace with your real auth token, e.g. pulled from context/storage.
+const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
+
+// NOTE: the Postman example shows an empty Params tab, so uid/date filters
+// aren't confirmed for this endpoint. This mirrors the sibling
+// exchange-salary-to-coins-history endpoint (uid, start_date, end_date) —
+// adjust the param names here if the backend expects something different.
+async function fetchTransferHistory({ uid, startDate, endDate }) {
+  const params = new URLSearchParams();
+  if (uid) params.set("uid", uid);
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+
+  const qs = params.toString();
+  const url = `${BASE_URL}/host/transfer-dollar-history${qs ? `?${qs}` : ""}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load transfer history (${res.status})`);
+  }
+
+  const json = await res.json();
+
+  if (!json.status) {
+    throw new Error(json.message || "Unexpected response from server");
+  }
+
+  return json; // { status, message, summary: { records, net_amount }, data: [...] }
+}
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -156,20 +182,38 @@ export default function TransferHistoryPage() {
   const [endDate, setEndDate] = useState(""); // "yyyy-mm-dd"
   const [openPicker, setOpenPicker] = useState(null); // "start" | "end" | null
 
-  // ── Filtered records ──────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    return MOCK_RECORDS.filter((r) => {
-      if (appliedUID && String(r.uid) !== appliedUID.trim()) return false;
-      const recordDate = r.date.slice(0, 10); // "yyyy-mm-dd"
-      if (startDate && recordDate < startDate) return false;
-      if (endDate && recordDate > endDate) return false;
-      return true;
-    });
+  const [records, setRecords] = useState([]);
+  const [summary, setSummary] = useState({ records: 0, net_amount: "0.00" });
+  const [status, setStatus] = useState("loading"); // loading | error | ready
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // ── Fetch whenever filters change ───────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    setStatus("loading");
+    setErrorMsg("");
+
+    fetchTransferHistory({ uid: appliedUID, startDate, endDate })
+      .then((json) => {
+        if (cancelled) return;
+        setRecords(json.data);
+        setSummary(json.summary);
+        setStatus("ready");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setErrorMsg(err.message || "Couldn't load transfer history.");
+        setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [appliedUID, startDate, endDate]);
 
-  const netAmount = filtered.reduce((sum, r) => sum + r.amount, 0);
+  const netAmount = parseFloat(summary.net_amount) || 0;
 
-  const handleSearch = () => setAppliedUID(searchUID);
+  const handleSearch = () => setAppliedUID(searchUID.trim());
 
   return (
     <div
@@ -202,7 +246,7 @@ export default function TransferHistoryPage() {
 
         {/* ── Filter Card ── */}
         <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-          {/* Date range filter (replaces Type / Source dropdowns) */}
+          {/* Date range filter */}
           <div className="flex gap-3">
             {/* Start date */}
             <div className="relative flex-1">
@@ -287,12 +331,18 @@ export default function TransferHistoryPage() {
           {/* Summary row */}
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-2xl font-bold text-gray-900">{filtered.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {status === "loading" ? "…" : summary.records}
+              </p>
               <p className="text-xs text-gray-400 mt-0.5">Records</p>
             </div>
             <div className="text-right">
               <p className={`text-xl font-bold ${netAmount < 0 ? "text-gray-900" : "text-green-600"}`}>
-                {netAmount < 0 ? "-" : "+"}${Math.abs(netAmount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {status === "loading"
+                  ? "…"
+                  : `${netAmount < 0 ? "-" : "+"}$${Math.abs(netAmount).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}`}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">Net Amount</p>
             </div>
@@ -301,32 +351,50 @@ export default function TransferHistoryPage() {
 
         {/* ── Record List ── */}
         <div className="flex flex-col gap-3">
-          {filtered.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm py-10">No records found</p>
-          ) : (
-            filtered.map((record) => (
-              <div key={record.id} className="bg-white rounded-2xl px-4 py-4 shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
-                  <span className="text-red-400 text-lg">&#8595;</span>
-                </div>
+          {status === "loading" &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl px-4 py-4 shadow-sm h-20 animate-pulse" />
+            ))}
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-gray-900 truncate">{record.type}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    UID: {record.uid} | {record.source}
-                  </p>
-                </div>
-
-                <div className="text-right flex-shrink-0">
-                  <p className={`text-base font-bold ${record.amount < 0 ? "text-red-500" : "text-green-500"}`}>
-                    {record.amount < 0 ? "-" : "+"}
-                    {Math.abs(record.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">{record.date}</p>
-                </div>
-              </div>
-            ))
+          {status === "error" && (
+            <p className="text-center text-sm text-red-500 py-10">{errorMsg}</p>
           )}
+
+          {status === "ready" && records.length === 0 && (
+            <p className="text-center text-gray-400 text-sm py-10">No records found</p>
+          )}
+
+          {status === "ready" &&
+            records.map((record) => {
+              const amountValue = parseFloat(record.amount);
+              return (
+                <div key={record.id} className="bg-white rounded-2xl px-4 py-4 shadow-sm flex items-center gap-4">
+                  {/* Avatar */}
+                  <img
+                    src={record.image}
+                    alt={record.name}
+                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0 bg-gray-100"
+                  />
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 truncate">{record.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      UID: {record.uid} | {record.name}
+                    </p>
+                  </div>
+
+                  {/* Amount + Date */}
+                  <div className="text-right flex-shrink-0">
+                    <p className={`text-base font-bold ${amountValue < 0 ? "text-red-500" : "text-green-500"}`}>
+                      {amountValue < 0 ? "-" : "+"}
+                      {Math.abs(amountValue).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{record.date_time}</p>
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>
