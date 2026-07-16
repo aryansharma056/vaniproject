@@ -1,17 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import BG_IMG from "../../../assets/bg_img.webp"
 import EXCHANGE_ICON from "../../../assets/exchange_img.webp"
 import TRANSFER_ICON from "../../../assets/transfer_img.webp"
 import WITHDRAW_ICON from "../../../assets/withdraw_img.webp"
 import { useNavigate } from "react-router-dom";
 
+const BASE_URL = "https://vanivoicechat.com/api";
+// TODO: replace with your real auth token, e.g. pulled from context/storage.
+const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
 
-// ── Mock wallet data – swap with API fetch when ready ──────────────────────
-const WALLET_DATA = {
-  balance: 0.80,
-  currency: "USD",
-};
- 
+async function fetchWalletBalance() {
+  const res = await fetch(`${BASE_URL}/host/wallet-balance`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load wallet balance (${res.status})`);
+  }
+
+  const json = await res.json();
+
+  if (!json.status) {
+    throw new Error(json.message || "Unexpected response from server");
+  }
+
+  return json.data; // { balance, formatted_balance }
+}
+
 const ACTIONS = [
   {
     id: "exchange",
@@ -32,7 +51,7 @@ const ACTIONS = [
     icon: WITHDRAW_ICON,
   },
 ];
- 
+
 // ── Action Card ───────────────────────────────────────────────────────────────
 function ActionCard({ action, onClick }) {
   return (
@@ -51,21 +70,42 @@ function ActionCard({ action, onClick }) {
     </button>
   );
 }
- 
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function WalletPage() {
-    const navigate = useNavigate();
-   const [wallet] = useState(WALLET_DATA);
+  const navigate = useNavigate();
+  const [balance, setBalance] = useState(null);
+  const [balanceStatus, setBalanceStatus] = useState("loading"); // loading | error | ready
   const [toast, setToast] = useState(null);
- 
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchWalletBalance()
+      .then((data) => {
+        if (!cancelled) {
+          setBalance(data.balance);
+          setBalanceStatus("ready");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBalanceStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleAction = (action) => {
-  const routes = {
-    exchange: "/host/exchange",
-    transfer: "/host/transfer",
-    withdraw: "/host/withdraw",
+    const routes = {
+      exchange: "/host/exchange",
+      transfer: "/host/transfer",
+      withdraw: "/host/withdraw",
+    };
+    navigate(routes[action.id]);
   };
-  navigate(routes[action.id]);
-};
+
   return (
     <div
       className="min-h-screen bg-gray-100 flex flex-col"
@@ -78,7 +118,7 @@ export default function WalletPage() {
         </button>
         <h1 className="w-full text-center text-lg font-bold text-gray-900">Wallet</h1>
       </div>
- 
+
       {/* ── Balance Card ── */}
       <div className="mx-4 mt-4 rounded-3xl overflow-hidden shadow-lg relative" style={{ minHeight: 220 }}>
         {/* Purple BG image */}
@@ -90,21 +130,25 @@ export default function WalletPage() {
         {/* Text overlay */}
         <div className="relative z-10 px-6 pt-8 pb-0">
           <p className="text-white text-4xl font-bold tracking-tight">
-            $ {wallet.balance.toFixed(2)}
+            {balanceStatus === "loading" && (
+              <span className="inline-block w-28 h-9 bg-white/30 rounded-lg animate-pulse align-middle" />
+            )}
+            {balanceStatus === "error" && "—"}
+            {balanceStatus === "ready" && `$ ${balance.toFixed(2)}`}
           </p>
           <p className="text-white text-base font-medium mt-2 opacity-90">
-            Wallet Balance - {wallet.currency}
+            {balanceStatus === "error" ? "Couldn't load balance" : "Wallet Balance - USD"}
           </p>
         </div>
       </div>
- 
+
       {/* ── Action Cards ── */}
       <div className="mx-4 mt-4 flex gap-3">
         {ACTIONS.map((action) => (
           <ActionCard key={action.id} action={action} onClick={handleAction} />
         ))}
       </div>
- 
+
       {/* ── Toast ── */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-5 py-2 rounded-full shadow-lg z-50">
@@ -114,4 +158,3 @@ export default function WalletPage() {
     </div>
   );
 }
- 

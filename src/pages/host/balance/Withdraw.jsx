@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import BANK_IMG from "../../../assets/bank.webp";
@@ -6,16 +6,59 @@ import HISTORY_IMG from "../../../assets/history.webp";
 import USDT_IMG from "../../../assets/usdt.webp";
 import BG_IMG from "../../../assets/withdraw_bg_img.webp";
 
-const WALLET_DATA = {
-    balance: 0.80,
-    currency: "USD",
-};
+const BASE_URL = "https://vanivoicechat.com/api";
+// TODO: replace with your real auth token, e.g. pulled from context/storage.
+const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
+
+async function fetchWalletBalance() {
+    const res = await fetch(`${BASE_URL}/host/wallet-balance`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            Accept: "application/json",
+        },
+    });
+
+    if (!res.ok) {
+        throw new Error(`Failed to load wallet balance (${res.status})`);
+    }
+
+    const json = await res.json();
+
+    if (!json.status) {
+        throw new Error(json.message || "Unexpected response from server");
+    }
+
+    return json.data; // { balance, formatted_balance }
+}
 
 export default function WithdrawPage() {
     const navigate = useNavigate();
     const [method, setMethod] = useState("bank"); // "bank" | "usdt"
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState("");
+
+    const [balance, setBalance] = useState(0);
+    const [balanceStatus, setBalanceStatus] = useState("loading"); // loading | error | ready
+
+    useEffect(() => {
+        let cancelled = false;
+
+        fetchWalletBalance()
+            .then((data) => {
+                if (!cancelled) {
+                    setBalance(data.balance);
+                    setBalanceStatus("ready");
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setBalanceStatus("error");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Bank fields
     const [bankName, setBankName] = useState("");
@@ -44,7 +87,7 @@ export default function WithdrawPage() {
             if (!walletAddress.trim()) return showToast("Please enter Wallet Address");
         }
         if (!amount || parseFloat(amount) <= 0) return showToast("Please enter a valid amount");
-        if (parseFloat(amount) > WALLET_DATA.balance) return showToast("Insufficient balance");
+        if (parseFloat(amount) > balance) return showToast("Insufficient balance");
 
         setLoading(true);
         // TODO: replace with real API call
@@ -102,9 +145,17 @@ export default function WithdrawPage() {
                     <div className="relative z-10 mt-1">
                         <p className="text-gray-800 font-semibold text-sm">Available Balance</p>
                         <p className="text-gray-900 font-extrabold text-4xl leading-tight mt-0.5">
-                            ${WALLET_DATA.balance.toFixed(2)}
+                            {balanceStatus === "loading" && (
+                                <span className="inline-block w-28 h-9 bg-gray-300/50 rounded-lg animate-pulse align-middle" />
+                            )}
+                            {balanceStatus === "error" && "—"}
+                            {balanceStatus === "ready" && `$${balance.toFixed(2)}`}
                         </p>
-                        <p className="text-gray-700 text-sm mt-1">Choose a method & amount to withdraw</p>
+                        <p className="text-gray-700 text-sm mt-1">
+                            {balanceStatus === "error"
+                                ? "Couldn't load balance"
+                                : "Choose a method & amount to withdraw"}
+                        </p>
                     </div>
 
                     {/* Method toggle */}
@@ -244,4 +295,4 @@ function Field({ label, children, last = false }) {
             </div>
         </div>
     );
-}
+} 

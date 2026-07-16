@@ -1,24 +1,93 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import BG_IMG from "../../../assets/exchange_bd_img.webp";
 import WALLET_IMG from "../../../assets/wallet_img.webp";
 import Exchange_Amount from "../../../assets/exchange_amount.webp";
 
-// ── Mock data – replace with API ──────────────────────────────────────────
-const WALLET_DATA = {
-    balance: 0.80,
-    currency: "USD",
-    coinsPerDollar: 8700,
-};
+const BASE_URL = "https://vanivoicechat.com/api";
+// TODO: replace with your real auth token, e.g. pulled from context/storage.
+const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
+
+async function fetchWalletBalance() {
+  const res = await fetch(`${BASE_URL}/host/wallet-balance`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to load wallet balance (${res.status})`);
+  }
+
+  const json = await res.json();
+
+  if (!json.status) {
+    throw new Error(json.message || "Unexpected response from server");
+  }
+
+  return json.data; // { balance, formatted_balance }
+}
+
+// Not returned by the wallet-balance API — keep as a display-only constant
+// until there's a real source for the exchange rate.
+const COINS_PER_DOLLAR = 8700;
+
+async function exchangeSalaryToCoins(amount) {
+  const formData = new FormData();
+  formData.append("amount", amount);
+
+  const res = await fetch(`${BASE_URL}/host/exchange-salary-to-coins`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/json",
+      // NOTE: no Content-Type header here — the browser sets the correct
+      // multipart/form-data boundary automatically when using FormData.
+    },
+    body: formData,
+  });
+
+  const json = await res.json();
+
+  if (!res.ok || !json.status) {
+    throw new Error(json.message || `Request failed (${res.status})`);
+  }
+
+  return json.data; // { usd_amount, coins_received, remaining_balance }
+}
 
 export default function ExchangePage() {
-      const navigate = useNavigate(); 
+    const navigate = useNavigate();
     const [amount, setAmount] = useState("");
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState("");
 
+    const [balance, setBalance] = useState(0);
+    const [balanceStatus, setBalanceStatus] = useState("loading"); // loading | error | ready
+
+    useEffect(() => {
+        let cancelled = false;
+
+        fetchWalletBalance()
+            .then((data) => {
+                if (!cancelled) {
+                    setBalance(data.balance);
+                    setBalanceStatus("ready");
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setBalanceStatus("error");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const coinsPreview = amount
-        ? (parseFloat(amount) * WALLET_DATA.coinsPerDollar).toLocaleString()
+        ? (parseFloat(amount) * COINS_PER_DOLLAR).toLocaleString()
         : null;
 
     const handleExchange = async () => {
@@ -27,19 +96,23 @@ export default function ExchangePage() {
             setTimeout(() => setToast(""), 2000);
             return;
         }
-        if (parseFloat(amount) > WALLET_DATA.balance) {
+        if (parseFloat(amount) > balance) {
             setToast("Insufficient balance");
             setTimeout(() => setToast(""), 2000);
             return;
         }
         setLoading(true);
-        // TODO: replace with real API call
-        // await fetch("/api/exchange", { method: "POST", body: JSON.stringify({ amount }) });
-        await new Promise((r) => setTimeout(r, 1200));
-        setLoading(false);
-        setToast("Exchange successful!");
-        setAmount("");
-        setTimeout(() => setToast(""), 2500);
+        try {
+            const data = await exchangeSalaryToCoins(amount);
+            setBalance(parseFloat(data.remaining_balance));
+            setToast(`Exchanged for ${Number(data.coins_received).toLocaleString()} coins!`);
+            setAmount("");
+        } catch (err) {
+            setToast(err.message || "Exchange failed. Please try again.");
+        } finally {
+            setLoading(false);
+            setTimeout(() => setToast(""), 2500);
+        }
     };
 
     return (
@@ -76,10 +149,20 @@ export default function ExchangePage() {
                             <div>
                                 <p className="text-white text-sm font-medium opacity-80">Wallet Balance</p>
                                 <p className="text-white text-3xl font-bold leading-tight">
-                                    ${WALLET_DATA.balance.toFixed(2)}
-                                    <span className="text-base font-semibold ml-1 opacity-80">{WALLET_DATA.currency}</span>
+                                    {balanceStatus === "loading" && (
+                                        <span className="inline-block w-24 h-7 bg-white/30 rounded-lg animate-pulse align-middle" />
+                                    )}
+                                    {balanceStatus === "error" && "—"}
+                                    {balanceStatus === "ready" && (
+                                        <>
+                                            ${balance.toFixed(2)}
+                                            <span className="text-base font-semibold ml-1 opacity-80">USD</span>
+                                        </>
+                                    )}
                                 </p>
-                                <p className="text-white text-sm opacity-70 mt-0.5">Available Balance</p>
+                                <p className="text-white text-sm opacity-70 mt-0.5">
+                                    {balanceStatus === "error" ? "Couldn't load balance" : "Available Balance"}
+                                </p>
                             </div>
                         </div>
                         <div className="flex justify-end mt-4">
@@ -121,7 +204,7 @@ export default function ExchangePage() {
                     </div>
 
                     <p className="text-gray-400 text-sm mt-2 ml-1">
-                        *1$ = {WALLET_DATA.coinsPerDollar.toLocaleString()} Coins
+                        *1$ = {COINS_PER_DOLLAR.toLocaleString()} Coins
                     </p>
 
                     {coinsPreview && (
