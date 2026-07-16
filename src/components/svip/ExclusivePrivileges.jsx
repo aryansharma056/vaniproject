@@ -68,18 +68,23 @@ export const PrivilegeCard = ({ privilege, theme }) => {
           : <Lock size={9} color="rgba(255,255,255,0.5)" />}
       </div>
 
-      {/* Icon */}
-      <div
-        className="w-11 h-11 rounded-full flex items-center justify-center"
-        style={{
-          background: isUnlocked
-            ? `radial-gradient(circle, ${theme.secondary}33, ${theme.primary}22)`
-            : "rgba(255,255,255,0.06)",
-          border: `1.5px solid ${isUnlocked ? theme.primary + "66" : "rgba(255,255,255,0.1)"}`,
-        }}
-      >
-        {renderIcon(icon, isUnlocked ? theme.primary : "rgba(255,255,255,0.35)")}
-      </div>
+    {/* Icon */}
+<div
+  className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden"
+  style={{
+    background: isUnlocked
+      ? `radial-gradient(circle, ${theme.secondary}33, ${theme.primary}22)`
+      : "rgba(255,255,255,0.06)",
+    border: `1.5px solid ${isUnlocked ? theme.primary + "66" : "rgba(255,255,255,0.1)"}`,
+  }}
+>
+  <img
+    src={icon}
+    alt={label}
+    className="w-6 h-6 object-contain"
+    style={{ opacity: isUnlocked ? 1 : 0.4 }}
+  />
+</div>
 
       {/* Label */}
       <p

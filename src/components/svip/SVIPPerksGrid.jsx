@@ -24,15 +24,15 @@ export const PerkCard = ({ perk, theme }) => {
     >
       {/* Icon bubble */}
       <div
-        className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
-        style={{
-          background: `radial-gradient(circle, ${theme.secondary}33 0%, ${theme.primary}22 100%)`,
-          border: `2px solid ${theme.primary}66`,
-          boxShadow: `0 0 12px ${theme.glowSoft}`,
-        }}
-      >
-        <Icon size={18} style={{ color: theme.primary }} />
-      </div>
+  className="flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center overflow-hidden"
+  style={{
+    background: `radial-gradient(circle, ${theme.secondary}33 0%, ${theme.primary}22 100%)`,
+    border: `2px solid ${theme.primary}66`,
+    boxShadow: `0 0 12px ${theme.glowSoft}`,
+  }}
+>
+  <img src={perk.icon} alt={perk.label} className="w-6 h-6 object-contain" />
+</div>
       {/* Text */}
       <div className="min-w-0 overflow-hidden">
         <p className="text-white text-sm font-semibold leading-tight truncate">{perk.label}</p>

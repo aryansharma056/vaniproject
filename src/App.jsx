@@ -30,6 +30,8 @@ import TransferHistory from "./pages/host/balance/TransferHistory";
 import Withdraw from "./pages/host/balance/Withdraw";
 import WithdrawalHistory from "./pages/host/balance/WithdrawHistory";
 import HostPolicy from "./pages/host/hostPolicy";
+import AgencyTeambills from "./pages/agency/AgencyTeambills";
+import AgencyMywork from "./pages/agency/AgencyMywork";
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
       <Route path="/agency/requests" element={<HostApplicationRequests />} />
       <Route path="/agency/members" element={<AgencyMemberList />} />
       <Route path="/agency/invite" element={<AgencyInvite />} />
+      <Route path="/agency/teambills" element={<AgencyTeambills />} />
+      <Route path="/agency/mywork" element={<AgencyMywork/>}/>
       <Route path="/bd" element={<BD />} />
       <Route path="/seller" element={<Seller />} />
       <Route path="/seller/history" element={<SellerHistory />} />

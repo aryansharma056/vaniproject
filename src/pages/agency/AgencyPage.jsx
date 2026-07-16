@@ -204,8 +204,14 @@ export default function AgencyPage() {
       navigate("/agency/members");
     } else if (label === "Invite") {
       navigate("/agency/invite");
-    }
-  };
+    }else if (label === "Balance") {
+    navigate("/host/balance");
+  }else if (label === "My Work") {
+    navigate("/agency/mywork");
+  } else if (label === "Team Bills") {
+    navigate("/agency/teambills");
+  }
+    };
 
   return (
     <>

@@ -156,7 +156,14 @@ const CROSS_SPARKS = [
   [76, 57, 11, "1.8s", "1.2s"],
   [32, 83,  9, "2.2s", "0.8s"],
 ];
-
+const formatCompactCoins = (num) => {
+  if (num === null || num === undefined) return "0";
+  const n = Number(num);
+  if (n >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "B";
+  if (n >= 1_000_000)     return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1_000)         return (n / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return n.toString();
+};
 function CrossSpark({ top, left, size, d, delay }) {
   return (
     <div className="spark-cross" style={{ top:`${top}%`, left:`${left}%`, "--d":d, "--delay":delay }}>
@@ -518,8 +525,7 @@ export default function SellerPage() {
             </p>
             <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9, flexWrap:"nowrap" }}>
               <img src={ICON_MY_COIN} alt="coin" className="coin-icon"/>
-              <span className="coin-amount">{loading ? "..." : balance.toLocaleString()}</span>
-            </div>
+              <span className="coin-amount">{loading ? "..." : formatCompactCoins(balance)}</span>            </div>
             <p style={{
               color:"rgba(255,255,255,0.65)", fontWeight:700, letterSpacing:"0.3px",
               fontSize:"clamp(10px,2.8vw,13px)"
@@ -586,7 +592,8 @@ export default function SellerPage() {
         </div>
 
         {/* ── Balance Card ── */}
-        <div className="bal-card">
+       {/* ── Balance Card ── */}
+<div className="bal-card" onClick={() => navigate("/host/balance")}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <img src={ICON_BALANCE} alt="Balance" style={{ width:70, height:60, objectFit:"contain" }}/>
             <span style={{ fontSize:17, fontWeight:800, color:"#1a1a2e" }}>Balance</span>

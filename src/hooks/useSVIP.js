@@ -1,18 +1,12 @@
-/**
- * useSVIP — Custom hook
- *
- * Manages active tab level, loading state, and data fetching.
- * Swap fetchSVIPData() body to connect to your real API.
- */
 import { useState, useEffect } from "react";
-import { fetchSVIPData, getPrivilegesForLevel } from "../data/svipData";
+import { fetchSVIPData } from "../data/svipData";
 import { getTheme } from "../constants/svipThemes";
 
 export const useSVIP = () => {
-  const [activeLevel, setActiveLevel]   = useState(1);
-  const [data, setData]                 = useState(null);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState(null);
+  const [activeLevel, setActiveLevel] = useState(1);
+  const [data, setData]               = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -20,6 +14,7 @@ export const useSVIP = () => {
         setLoading(true);
         const result = await fetchSVIPData();
         setData(result);
+        setActiveLevel(result.currentLevel); // default to user's own level
       } catch (err) {
         setError(err.message);
       } finally {
@@ -31,9 +26,9 @@ export const useSVIP = () => {
 
   const currentLevelData = data?.levels?.find((l) => l.level === activeLevel);
   const theme            = getTheme(activeLevel);
-  const privileges       = getPrivilegesForLevel(activeLevel);
+  const privileges       = currentLevelData?.privileges ?? []; // ← comes straight from API now
   const isCurrentLevel   = activeLevel === data?.currentLevel;
-  const pointsNeeded     = currentLevelData?.pointsRequired ?? 0;
+  const pointsNeeded     = Math.max((currentLevelData?.pointsRequired ?? 0) - (data?.totalPoints ?? 0), 0);
 
   return {
     activeLevel,

@@ -148,20 +148,58 @@ export const getPrivilegesForLevel = (currentLevel) =>
  * Simulate API fetch — replace body with real fetch() call
  * @returns {Promise<{ levels: SVIPLevel[], currentLevel: number, pointsNeeded: number }>}
  */
-export const fetchSVIPData = async () => {
-  // TODO: Replace with real API call:
-  // const res = await fetch('/api/svip/levels', { headers: { Authorization: `Bearer ${token}` } });
-  // return res.json();
+const API_BASE = "https://vanivoicechat.com/api";
 
-  return new Promise((resolve) =>
-    setTimeout(
-      () =>
-        resolve({
-          levels: SVIP_LEVELS,
-          currentLevel: 6,        // user's current level
-          pointsNeeded: 30000000, // points needed for current tab level
-        }),
-      400
-    )
-  );
+const normalizeSVIPResponse = (json) => {
+  const totalPoints = json.total_points ?? 0;
+
+  const levels = json.data.map((lvl) => {
+    const activeCount = lvl.privileges.filter((p) => p.is_active).length;
+    return {
+      level: lvl.id,
+      label: lvl.name,
+      pointsRequired: lvl.coins,
+      bgColor: lvl.bg_color,
+      perks: [
+        { id: "medal", icon: lvl.medal, label: "Medal", description: "Exclusive medal for your profile" },
+        { id: "title", icon: lvl.title, label: "Title", description: "Unlock exclusive name title" },
+        { id: "bubble", icon: lvl.bubble, label: "Chat Bubble", description: "Unlock exclusive chat bubble" },
+        { id: "headwear", icon: lvl.headwear, label: "Headwear", description: "Unlock exclusive headwear" },
+        { id: "entry", icon: lvl.entry, label: "Entrance", description: "Unlock exclusive entrance effect" },
+        { id: "profileCard", icon: lvl.profile_card, label: "Profile Card", description: "Unlock exclusive profile card" },
+      ],
+      privileges: lvl.privileges.map((p) => ({
+        id: String(p.id),
+        icon: p.icon,          // now a URL
+        label: p.name,
+        isUnlocked: p.is_active,
+        detail: null,
+      })),
+      totalPrivileges: activeCount,
+      description: `Enjoy ${activeCount} exclusive privileges`,
+    };
+  });
+
+  // current level = highest level whose coin threshold the user has already met
+  let currentLevel = levels[0]?.level ?? 1;
+  levels.forEach((l) => {
+    if (totalPoints >= l.pointsRequired) currentLevel = l.level;
+  });
+
+  return { levels, currentLevel, totalPoints };
+};
+
+export const fetchSVIPData = async () => {
+  const token = localStorage.getItem("token"); // adjust if you store auth differently
+
+  const res = await fetch(`${API_BASE}/svip-list`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!res.ok) throw new Error(`Failed to fetch SVIP data: ${res.status}`);
+
+  const json = await res.json();
+  if (!json.status) throw new Error(json.message || "Failed to fetch SVIP data");
+
+  return normalizeSVIPResponse(json);
 };
