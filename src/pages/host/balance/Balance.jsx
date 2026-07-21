@@ -7,13 +7,19 @@ import { useNavigate } from "react-router-dom";
 
 const BASE_URL = "https://vanivoicechat.com/api";
 // TODO: replace with your real auth token, e.g. pulled from context/storage.
-const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
+// const TOKEN = "V52rzcafZU3I12EKhMMqIls36rhAUuDZEeGKB9t8a14e11fd";
 
 async function fetchWalletBalance() {
+  const token = localStorage.getItem("token"); // ⚠️ confirm this key name matches what you use at login
+
+  if (!token) {
+    throw new Error("No token found — user not logged in");
+  }
+
   const res = await fetch(`${BASE_URL}/host/wallet-balance`, {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${TOKEN}`,
+      Authorization: `Bearer ${token}`,
       Accept: "application/json",
     },
   });

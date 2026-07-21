@@ -9,15 +9,7 @@ import ICON_INV_BD from "../../assets/invite BD.webp";
 import PROFILE_BG from "../../assets/admin center 2.webp";
 import HOST_HEADER_BG from "../../assets/host_header_bg.webp";
 import api from "../../services/api";
-/*
-  The only CSS we cannot express in Tailwind and must keep in a <style> tag:
-    1. @import for Google Fonts (Tailwind has no font-import utility)
-    2. @keyframes ring-hue  — custom animation with hue-rotate + drop-shadow
-    3. @keyframes dropIn    — custom enter animation for the dropdown
-    4. .card-wave           — repeating-linear-gradient + mask-image (no Tailwind equivalent)
-    5. ::-webkit-scrollbar* — pseudo-element styles (not supported by Tailwind)
-  Everything else below is pure Tailwind.
-*/
+
 const minimalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
 
@@ -442,7 +434,7 @@ export default function AdminCenter() {
                           flex items-center justify-between px-[18px] py-4
                           cursor-pointer transition-colors duration-150 min-w-0
                           hover:bg-[#f5f6ff]"
-            onClick={() => navigate("/wallet")}
+            onClick={() => navigate("/host/balance")}
           >
             <div className="flex items-center gap-3.5">
               <img
